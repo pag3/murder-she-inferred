@@ -29,7 +29,7 @@ Optionally: annotate moments where evidence strongly implicates or clears someon
   - Suspect introduced
   - Suspect still viable
   - Suspect eliminated
-- Simple evidence notes ("implicating", "exonerating", "misleading")
+- Simple evidence notes ("implicating", "exonerating")
 - Visualizations suitable for sharing (PNG, SVG, interactive HTML)
 
 ### Out of Scope (for now)
@@ -72,9 +72,6 @@ Optionally: annotate moments where evidence strongly implicates or clears someon
 - Attach short, human-readable notes to chunk boundaries:
   - implicates X
   - clears X
-  - misleading / red herring
-
-No numeric scoring required.
 
 ### FR-5: Visualization
 - X-axis: episode progression (chunk index or time)
