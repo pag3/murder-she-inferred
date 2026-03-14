@@ -29,6 +29,11 @@ Run the full test suite with:
 python3 -m pytest
 ```
 
+Script-level tests should run the actual CLI tools where practical. The shared
+test data lives under `tests/test_transcripts/`, and those tests should point
+the real scripts at that directory with CLI path arguments instead of relying on
+separate test-only codepaths.
+
 ## Project Layout
 
 - `src/murder_she_inferred/`: package modules
@@ -43,6 +48,8 @@ python3 -m pytest
   commands, configuration, or outputs change.
 - Update [docs/roadmap.md](docs/roadmap.md) when a roadmap item is completed,
   reprioritized, or meaningfully redefined.
+- Keep script interfaces path-driven so tests can point them at
+  `tests/test_transcripts/` and local production/manual use can point them at
+  private transcript directories with the same CLI flags.
 - Prefer small, reviewable changes that keep the local-first workflow easy to
   understand.
-

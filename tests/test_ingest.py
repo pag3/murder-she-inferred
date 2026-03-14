@@ -26,7 +26,7 @@ class TestLoadTranscript:
 class TestStripBoilerplate:
     def test_strips_header(self, webtext_transcript_text):
         cleaned = strip_boilerplate(webtext_transcript_text)
-        assert "Transcripts -" not in cleaned
+        assert "Transcript Archive" not in cleaned
         assert "Posted:" not in cleaned
         assert "bunniefuu" not in cleaned
 
@@ -250,7 +250,7 @@ class TestIngestEpisode:
             webtext_transcript_file, chunk_mode="fixed", chunk_size=5000
         )
         raw_text = " ".join(c.text for c in timeline_raw.chunks)
-        assert "Transcripts" in raw_text
+        assert "Transcript Archive" in raw_text
 
         # With stripping — boilerplate is removed
         timeline_clean = ingest_episode(
@@ -260,4 +260,4 @@ class TestIngestEpisode:
             chunk_size=5000,
         )
         clean_text = " ".join(c.text for c in timeline_clean.chunks)
-        assert "Transcripts -" not in clean_text
+        assert "Transcript Archive" not in clean_text

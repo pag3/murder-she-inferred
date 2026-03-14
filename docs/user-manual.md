@@ -42,6 +42,10 @@ Supported transcript patterns today:
 - screenplay-style transcripts with `INT.` / `EXT.` slug lines
 - continuous-text transcripts that need boilerplate stripping and fixed-size chunking
 
+The same CLI tools are meant to run against either committed
+`tests/test_transcripts/` data or your private local transcript folders. The
+difference should be the path arguments you pass, not a separate test-only toolchain.
+
 ## Build Chunk Files
 
 Generate chunked transcript payloads with:
@@ -93,7 +97,6 @@ Useful options:
 - `--max-chunks`: limit processing for a quick experiment
 - `--retries`: retry invalid model output per chunk
 - `--sleep-seconds`: pause between chunk calls
-- `--prompt-profile`: choose `baseline` or `strict_elimination`
 
 Example single-episode run:
 
@@ -101,8 +104,7 @@ Example single-episode run:
 PYTHONPATH=src python3 scripts/infer_timelines_with_codex_cli.py \
   --file "../murder-she-inferred-data/episode_timeline_chunks/S01E03 - 01x03 - Deadly Lady.chunks.json" \
   --max-chunks 5 \
-  --codex-command "codex exec -" \
-  --prompt-profile baseline
+  --codex-command "codex exec -"
 ```
 
 ## Run QC Checks
@@ -156,4 +158,3 @@ If inference fails:
 
 If plotting or QC fails:
 - confirm timeline JSON files exist under the input directory you passed
-

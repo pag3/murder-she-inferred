@@ -38,7 +38,7 @@ _BOILERPLATE_HEADER_RE = re.compile(
 _BOILERPLATE_FOOTER_RE = re.compile(
     r"\s*All times are UTC[^\n]*$"
     r"|\s*Page \d+ of \d+\s*$"
-    r"|\s*Powered by phpBB[^\n]*$",
+    r"|\s*Powered by [^\n]*Forum Software[^\n]*$",
     re.MULTILINE,
 )
 

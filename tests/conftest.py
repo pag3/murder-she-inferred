@@ -1,4 +1,4 @@
-"""Shared test fixtures."""
+"""Shared test helpers and sample transcripts."""
 
 import pytest
 from pathlib import Path
@@ -76,13 +76,12 @@ FADE OUT.
 
 # A continuous-text transcript with site-generated header and footer.
 WEBTEXT_TRANSCRIPT = (
-    "Transcripts - Forever Dreaming \u2022 01x04 - Birds of a Feather "
-    "Transcripts - Forever Dreaming "
-    "Thousands of current or popular TV shows and movie transcripts "
-    "for online research and education."
-    "https://transcripts.foreverdreaming.org/ "
+    "Transcript Archive \u2022 01x04 - Birds of a Feather "
+    "Transcript Archive "
+    "Sample television and movie transcripts for testing and research. "
+    "https://example.invalid/transcripts/ "
     "01x04 - Birds of a Feather "
-    "https://transcripts.foreverdreaming.org/viewtopic.php?t=78367 "
+    "https://example.invalid/transcripts/01x04-birds-of-a-feather "
     "Page 1 of 1 "
     "01x04 - Birds of a Feather "
     "Posted: 07/29/22 18:10 by bunniefuu "
@@ -114,7 +113,7 @@ WEBTEXT_TRANSCRIPT = (
     "Intimate. I see. Well, we can still make it very festive. "
     "All times are UTC-05:00"
     "Page 1 of 1 "
-    "Powered by phpBB\u00ae Forum Software \u00a9 phpBB Limited"
+    "Powered by Example Forum Software \u00a9 Example Archive"
 )
 
 
@@ -144,3 +143,9 @@ def webtext_transcript_file(tmp_path):
     path = tmp_path / "01x04_birds_of_a_feather.txt"
     path.write_text(WEBTEXT_TRANSCRIPT, encoding="utf-8")
     return path
+
+
+@pytest.fixture
+def synthetic_test_transcripts_dir() -> Path:
+    """Return the committed directory of synthetic test-transcripts."""
+    return Path(__file__).parent / "test_transcripts"
