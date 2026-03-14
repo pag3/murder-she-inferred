@@ -34,6 +34,10 @@ def _load_project_dotenv() -> None:
         key, value = line.split("=", 1)
         key = key.strip()
         value = value.strip().strip('"').strip("'")
+        if key == DATA_DIR_ENV_VAR and value:
+            candidate = Path(value).expanduser()
+            if not candidate.is_absolute():
+                value = str((PROJECT_ROOT / candidate).resolve(strict=False))
         if key:
             os.environ.setdefault(key, value)
 
