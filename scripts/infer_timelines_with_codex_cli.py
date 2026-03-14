@@ -29,6 +29,9 @@ Rules:
 - Use only the provided cumulative transcript context and prior state.
 - Keep names consistent and concise.
 - Do not hallucinate facts not present in the transcript so far.
+- If the chunk strongly clears a suspect (alibi, impossibility, confession by another), include them in "eliminated".
+- If the chunk contains a reveal/confession/explicit killer identification, aggressively eliminate alternatives that are no longer plausible.
+- Public accusations/arrests are weak evidence by default unless corroborated by concrete clues.
 - If nothing changes, return empty lists.
 """
 
