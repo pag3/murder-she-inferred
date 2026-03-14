@@ -46,6 +46,10 @@ The repository currently supports a working prototype pipeline for:
 - QC checks for generated timelines
 - HTML visualization rendering
 
+The intended design is to run the same CLI tools against either committed
+`tests/test_transcripts/` inputs or your private local transcript folders by
+changing CLI path arguments, rather than maintaining separate test-only tools.
+
 The model-training path described in the project spec is future work and is not
 implemented yet.
 
@@ -61,4 +65,3 @@ implemented yet.
 - `src/murder_she_inferred/`: package code for ingestion, state tracking, and settings
 - `scripts/`: entrypoints for chunk generation, inference, QC, and plotting
 - `tests/`: automated test coverage for the current Python package
-
