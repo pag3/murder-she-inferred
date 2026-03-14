@@ -1,115 +1,170 @@
 # Roadmap
 
-This file is the shared task tracker for the project. It should be updated as
-work is completed, reprioritized, or clarified.
+This file is the shared task tracker for the project. It is organized by
+capability area so current work, planned work, and completed work are easier to
+scan and maintain.
 
-## Current Focus
+## Local Workflow and Tooling
 
-### Stabilize the documented local workflow
+Keep the local-first workflow reliable, documented, and easy to repeat.
 
-- Why it matters: the current pipeline exists, but it is still prototype-grade
-  and needs a cleaner path for repeatable use.
-- Definition of done: setup, commands, outputs, and expected directories are
-  documented and stay in sync with the code.
+### Current
+
+#### Stabilize the documented local workflow
+
 - Status: in progress
+- Why it matters: the prototype is usable, but it still needs a dependable path
+  from setup through outputs.
+- Definition of done: setup, commands, directory expectations, and generated
+  artifacts stay in sync with the code and are easy for a new contributor to follow.
 
-### Improve inference prompt quality
+### Next
 
-- Why it matters: timeline usefulness depends on timely suspect introductions,
-  eliminations, and evidence notes.
-- Definition of done: prompt variants can be compared on representative episodes
-  and produce clearly better suspect-state updates than the initial baseline.
-- Status: in progress
+#### Keep automated test checks lightweight and reliable
 
-## Next Up
-
-### Define a repeatable QC and evaluation workflow
-
-- Why it matters: the project needs a reliable way to tell whether timeline
-  outputs are improving.
-- Definition of done: a small reviewed episode set, a clear QC checklist, and a
-  repeatable comparison process exist for prompt or model changes.
 - Status: planned
+- Why it matters: low-friction CI is the fastest way to catch regressions in
+  the package code.
+- Definition of done: GitHub Actions runs the unit test suite on pushes to
+  `main` and on pull requests, and contributors treat `python -m pytest` as the
+  default pre-PR check.
 
-### Improve output visualization quality
+### Done
 
-- Why it matters: the project goal is a chart that makes the narrowing suspect
-  field obvious to non-technical viewers.
-- Definition of done: chart output is easier to read, highlights state changes
-  more clearly, and is suitable for sharing.
-- Status: planned
+#### Establish local data directory configuration
 
-### Clarify timeline output contracts
-
-- Why it matters: downstream QC, plotting, and future model comparison depend on
-  stable timeline fields.
-- Definition of done: the required structure of timeline JSON and event-level
-  fields is documented and reflected consistently across scripts.
-- Status: planned
-
-## Later
-
-### Add comparison workflows for prompt profiles and analyzers
-
-- Why it matters: the project should be able to compare multiple inference
-  strategies on the same episode inputs.
-- Definition of done: outputs from different prompt profiles or analyzers can be
-  generated side by side and reviewed consistently.
-- Status: later
-
-### Prepare for model-training work
-
-- Why it matters: the future training path will need labeled data and a clear
-  replacement point for the current analyzer.
-- Definition of done: a labeling format, dataset expectations, and evaluation
-  approach are defined before training implementation starts.
-- Status: later
-
-## Done
-
-### Establish local data directory configuration
-
+- Status: done
 - Why it matters: transcript and output data should live outside the repo when
   needed.
 - Definition of done: project-local configuration resolves a default or custom
   data directory without requiring system-wide setup.
+
+## Inference Quality
+
+Improve the quality of suspect introductions, eliminations, and evidence notes
+produced by the analyzer.
+
+### Current
+
+#### Improve inference prompt quality
+
+- Status: in progress
+- Why it matters: timeline usefulness depends on whether suspect-state updates
+  happen at the right moments and with the right confidence.
+- Definition of done: the default prompt produces clearer suspect
+  introductions, eliminations, and evidence notes on representative episodes.
+
+### Next
+
+#### Define what counts as a strong elimination
+
+- Status: planned
+- Why it matters: prompt tuning needs a shared standard for when a suspect is
+  genuinely out versus just temporarily less likely.
+- Definition of done: reviewed transcript examples establish when eliminations
+  should happen and those examples guide prompt iteration.
+
+### Later
+
+#### Add comparison workflows for analyzers
+
+- Status: later
+- Why it matters: the project should be able to compare multiple inference
+  strategies on the same episode inputs.
+- Definition of done: outputs from alternate prompts or future analyzers can be
+  generated side by side and reviewed consistently.
+
+## Evaluation and QC
+
+Make output quality measurable enough that changes can be judged on more than
+intuition.
+
+### Next
+
+#### Define a repeatable QC and evaluation workflow
+
+- Status: planned
+- Why it matters: the project needs a reliable way to tell whether timeline
+  outputs are improving.
+- Definition of done: a small reviewed episode set, a clear QC checklist, and a
+  repeatable comparison process exist for prompt or model changes.
+
+## Visualization and Outputs
+
+Make the resulting timelines easier to read and easier to share.
+
+### Next
+
+#### Improve output visualization quality
+
+- Status: planned
+- Why it matters: the project goal is a chart that makes the narrowing suspect
+  field obvious to non-technical viewers.
+- Definition of done: chart output is easier to read, highlights state changes
+  more clearly, and is suitable for sharing.
+
+#### Decide which output formats matter beyond HTML
+
+- Status: planned
+- Why it matters: visualization priorities differ depending on whether the main
+  deliverable is local review, publication, or side-by-side analysis.
+- Definition of done: the project explicitly prioritizes HTML-only for now or
+  names the next export format to support after HTML.
+
+### Done
+
+#### Add QC and HTML visualization scripts
+
 - Status: done
-
-### Build transcript chunking pipeline
-
-- Why it matters: the project needs ordered chunks before any temporal inference
-  can happen.
-- Definition of done: transcript files are ingested, cleaned when needed, and
-  chunked into ordered JSON payloads.
-- Status: done
-
-### Implement initial Codex CLI timeline inference
-
-- Why it matters: the prototype needs a working chunk-by-chunk analysis pass to
-  generate suspect timelines.
-- Definition of done: chunk files can be processed into timeline JSON outputs
-  using Codex CLI with cumulative context and prior state.
-- Status: done
-
-### Add QC and HTML visualization scripts
-
 - Why it matters: generated timelines need lightweight review and a readable
   presentation format.
 - Definition of done: timeline JSON can be checked for obvious issues and
   rendered into self-contained HTML charts.
+
+## Data Contracts and Comparisons
+
+Keep timeline outputs stable enough that downstream tooling and future
+comparisons remain straightforward.
+
+### Next
+
+#### Clarify timeline output contracts
+
+- Status: planned
+- Why it matters: QC, plotting, and future analyzer comparisons depend on a
+  stable timeline shape.
+- Definition of done: the required timeline JSON structure and core event-level
+  fields are documented and reflected consistently across scripts.
+
+### Done
+
+#### Build transcript chunking pipeline
+
 - Status: done
+- Why it matters: the project needs ordered chunks before any temporal inference
+  can happen.
+- Definition of done: transcript files are ingested, cleaned when needed, and
+  chunked into ordered JSON payloads.
 
-## Open Questions
+#### Implement initial Codex CLI timeline inference
 
-### What should count as a successful suspect elimination?
+- Status: done
+- Why it matters: the prototype needs a working chunk-by-chunk analysis pass to
+  generate suspect timelines.
+- Definition of done: chunk files can be processed into timeline JSON outputs
+  using Codex CLI with cumulative context and prior state.
 
-- Why it matters: prompt tuning and future evaluation both depend on a shared
-  standard for when a suspect is truly out.
-- Current note: this needs examples from reviewed episodes, not just prompt wording.
+## Future Training Work
 
-### Which output formats matter most beyond HTML?
+Reserve space for model-training work without letting it dominate current
+prototype priorities.
 
-- Why it matters: roadmap priorities differ if the main deliverable is for local
-  review, publication, or side-by-side analysis.
-- Current note: HTML exists today, while PNG and SVG remain aspirational.
+### Later
 
+#### Prepare for model-training work
+
+- Status: later
+- Why it matters: the future training path will need labeled data and a clear
+  replacement point for the current analyzer.
+- Definition of done: a labeling format, dataset expectations, and evaluation
+  approach are defined before training implementation starts.

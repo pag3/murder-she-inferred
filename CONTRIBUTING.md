@@ -29,6 +29,9 @@ Run the full test suite with:
 python3 -m pytest
 ```
 
+The repository also includes a minimal GitHub Actions workflow that runs the
+test suite on pushes to `main` and on pull requests targeting `main`.
+
 ## Project Layout
 
 - `src/murder_she_inferred/`: package modules
@@ -43,6 +46,6 @@ python3 -m pytest
   commands, configuration, or outputs change.
 - Update [docs/roadmap.md](docs/roadmap.md) when a roadmap item is completed,
   reprioritized, or meaningfully redefined.
+- Keep `python3 -m pytest` passing locally before opening a PR.
 - Prefer small, reviewable changes that keep the local-first workflow easy to
   understand.
-
