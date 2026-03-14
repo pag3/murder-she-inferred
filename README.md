@@ -1,57 +1,64 @@
 # murder-she-inferred
-Temporal inference of culpability in Murder, She Wrote using AI
 
-## Local data directory (project-only)
+Temporal inference of culpability in *Murder, She Wrote* using AI.
 
-Data can live outside this repo (for privacy), for example in the sibling folder:
-`../murder-she-inferred-data`.
+This project is a local-first prototype for turning episode transcripts into
+suspect timelines. It chunks transcripts in order, asks an LLM for structured
+suspect-state updates, tracks who remains viable over time, and renders the
+results into reviewable outputs.
 
-Configuration is project-local and does not require system-wide setup:
+## Quickstart
 
-1. Create `.env` from `.env.example`
-2. Set `MURDER_SHE_INFERRED_DATA_DIR` if needed
+1. Create a project-local environment file:
 
 ```bash
 cp .env.example .env
 ```
 
-In Python:
+2. Optionally set `MURDER_SHE_INFERRED_DATA_DIR` in `.env`.
+   If unset, the project defaults to `../murder-she-inferred-data`.
 
-```python
-from murder_she_inferred import get_data_dir, data_path
+3. Install the package and test dependencies:
 
-root = get_data_dir()
-transcript = data_path("transcripts", "episode1.txt")
+```bash
+python3 -m pip install -e '.[dev]'
 ```
 
-## Codex CLI inference prototype
-
-This project includes an experimental pipeline that calls Codex CLI per chunk
-and builds timeline outputs.
-Each chunk inference receives cumulative context from episode start through the
-current chunk (chunk 0..i), plus prior suspect state.
-
-1. Build chunk files:
+4. Build transcript chunks:
 
 ```bash
 PYTHONPATH=src python3 scripts/build_episode_timeline_chunks.py
 ```
 
-2. Run Codex CLI inference:
+5. Run Codex CLI inference:
 
 ```bash
 PYTHONPATH=src python3 scripts/infer_timelines_with_codex_cli.py \
   --codex-command "codex exec -"
 ```
 
-By default, outputs are written to:
-`../murder-she-inferred-data/episode_timelines_codex_cli`
+## Current State
 
-You can test one episode first:
+The repository currently supports a working prototype pipeline for:
+- local data directory configuration
+- transcript chunk generation
+- per-chunk Codex CLI inference into timeline JSON
+- QC checks for generated timelines
+- HTML visualization rendering
 
-```bash
-PYTHONPATH=src python3 scripts/infer_timelines_with_codex_cli.py \
-  --file "../murder-she-inferred-data/episode_timeline_chunks/S01E03 - 01x03 - Deadly Lady.chunks.json" \
-  --max-chunks 5 \
-  --codex-command "codex exec -"
-```
+The model-training path described in the project spec is future work and is not
+implemented yet.
+
+## Documentation
+
+- [User Manual](docs/user-manual.md)
+- [Project Spec](docs/spec.md)
+- [Roadmap](docs/roadmap.md)
+- [Contributing Guide](CONTRIBUTING.md)
+
+## Repository Layout
+
+- `src/murder_she_inferred/`: package code for ingestion, state tracking, and settings
+- `scripts/`: entrypoints for chunk generation, inference, QC, and plotting
+- `tests/`: automated test coverage for the current Python package
+
