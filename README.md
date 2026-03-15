@@ -24,21 +24,21 @@ cp .env.example .env
 python3 -m pip install -e '.[dev]'
 ```
 
-4. Build transcript chunks:
+4. Run the full test pipeline:
 
 ```bash
-PYTHONPATH=src python3 scripts/build_episode_timeline_chunks.py
-```
-
-5. Run Codex CLI inference:
-
-```bash
-PYTHONPATH=src python3 scripts/build_episode_timeline_chunks.py \
-  --run-root test-run
-
-PYTHONPATH=src python3 scripts/infer_timelines_with_codex_cli.py \
+murder-she-inferred \
   --run-root test-run \
   --codex-command "codex exec -"
+```
+
+You can also run individual stages through the same package CLI:
+
+```bash
+murder-she-inferred chunks --run-root test-run
+murder-she-inferred infer --run-root test-run --codex-command "codex exec -"
+murder-she-inferred qc --run-root test-run
+murder-she-inferred plot --run-root test-run
 ```
 
 ## Current State

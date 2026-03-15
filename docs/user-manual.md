@@ -64,12 +64,34 @@ The same CLI tools are meant to run against either committed
 `test-run/01-transcripts/` data or your private local transcript folders. The
 difference should be the path arguments you pass, not a separate test-only toolchain.
 
+## Run The Full Pipeline
+
+For the full numbered pipeline in one command:
+
+```bash
+murder-she-inferred \
+  --run-root test-run \
+  --codex-command "codex exec -"
+```
+
+That command runs chunking, inference, QC, and plotting in order using the same
+underlying stage scripts documented below.
+
+The package CLI also supports stage subcommands:
+
+```bash
+murder-she-inferred chunks --run-root test-run
+murder-she-inferred infer --run-root test-run --codex-command "codex exec -"
+murder-she-inferred qc --run-root test-run
+murder-she-inferred plot --run-root test-run
+```
+
 ## Build Chunk Files
 
 Generate chunked transcript payloads with:
 
 ```bash
-PYTHONPATH=src python3 scripts/build_episode_timeline_chunks.py \
+murder-she-inferred chunks \
   --run-root test-run
 ```
 
@@ -102,7 +124,7 @@ test-run/02-chunks/
 Build timeline JSON files from chunk files with:
 
 ```bash
-PYTHONPATH=src python3 scripts/infer_timelines_with_codex_cli.py \
+murder-she-inferred infer \
   --run-root test-run \
   --codex-command "codex exec -"
 ```
@@ -135,7 +157,7 @@ test-run/03-timelines/
 Example single-episode run:
 
 ```bash
-PYTHONPATH=src python3 scripts/infer_timelines_with_codex_cli.py \
+murder-she-inferred infer \
   --run-root local-run \
   --max-chunks 5 \
   --codex-command "codex exec -"
@@ -146,7 +168,7 @@ PYTHONPATH=src python3 scripts/infer_timelines_with_codex_cli.py \
 Check generated timeline files for obvious issues with:
 
 ```bash
-PYTHONPATH=src python3 scripts/qc_timelines.py \
+murder-she-inferred qc \
   --run-root test-run
 ```
 
@@ -166,7 +188,7 @@ test-run/04-qc/report.json
 Generate self-contained HTML charts with:
 
 ```bash
-PYTHONPATH=src python3 scripts/plot_timeline.py \
+murder-she-inferred plot \
   --run-root test-run
 ```
 
