@@ -37,6 +37,18 @@ class TestSuspectRecord:
         assert suspect.state == SuspectState.ELIMINATED
         assert suspect.eliminated_at == 5
 
+    def test_reactivate(self):
+        suspect = SuspectRecord(name="Frank Butler", introduced_at=3)
+        suspect.eliminate(chunk_index=5)
+        suspect.reactivate(chunk_index=7)
+        assert suspect.state == SuspectState.ACTIVE
+        assert suspect.eliminated_at is None
+        assert suspect.transitions == [
+            (3, SuspectState.ACTIVE),
+            (5, SuspectState.ELIMINATED),
+            (7, SuspectState.ACTIVE),
+        ]
+
 
 class TestEvidenceNote:
     def test_str_implicates(self):
@@ -103,3 +115,10 @@ class TestEpisodeTimeline:
         states = timeline.suspects_at_chunk(4)
         assert states["Alice"] == SuspectState.ACTIVE
         assert states["Bob"] == SuspectState.ELIMINATED
+
+    def test_suspects_at_chunk_after_reactivation(self):
+        timeline = self._make_timeline()
+        timeline.suspects["Bob"].reactivate(chunk_index=5)
+
+        assert timeline.suspects_at_chunk(4)["Bob"] == SuspectState.ELIMINATED
+        assert timeline.suspects_at_chunk(5)["Bob"] == SuspectState.ACTIVE

@@ -28,10 +28,14 @@ class SuspectTracker:
     def introduce_suspect(self, name: str, chunk_index: int) -> SuspectRecord:
         """Add a new suspect at the given chunk index.
 
-        If the suspect already exists, returns the existing record unchanged.
+        If the suspect already exists, returns the existing record. Previously
+        eliminated suspects are reactivated when they become plausible again.
         """
         if name in self.timeline.suspects:
-            return self.timeline.suspects[name]
+            record = self.timeline.suspects[name]
+            if record.state == SuspectState.ELIMINATED:
+                record.reactivate(chunk_index)
+            return record
 
         record = SuspectRecord(name=name, introduced_at=chunk_index)
         self.timeline.suspects[name] = record

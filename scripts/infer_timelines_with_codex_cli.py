@@ -27,10 +27,15 @@ Schema:
 }
 Rules:
 - Use only the provided cumulative transcript context and prior state.
-- Keep names consistent and concise.
+- Keep names consistent and prefer full names over shorthand.
+- Reuse the most specific full name already established in the transcript or prior state; avoid switching between aliases, titles, first names, and surnames for the same person.
 - Do not hallucinate facts not present in the transcript so far.
 - If the chunk strongly clears a suspect (alibi, impossibility, confession by another), include them in "eliminated".
 - If the chunk contains a reveal/confession/explicit killer identification, aggressively eliminate alternatives that are no longer plausible.
+- If a previously eliminated suspect becomes plausible again, include them in "introduced" so they become active again.
+- Track the principal wrongdoer(s) for the episode's central mystery. If the chunk distinguishes the actual killer from an accomplice, coerced helper, cover-up participant, self-defender, victim, or suicide, keep that distinction clear in both state updates and evidence notes.
+- Do not leave a self-defender, accident victim, or suicide victim active as the murderer once the transcript clarifies what really happened.
+- When two different crimes are disentangled late in the episode, keep active only the people still plausibly responsible for intentional wrongdoing that Jessica is exposing in the current reveal.
 - Public accusations/arrests are weak evidence by default unless corroborated by concrete clues.
 - If nothing changes, return empty lists.
 """
@@ -260,6 +265,11 @@ def _build_timeline(chunks_payload: dict[str, Any], args: argparse.Namespace) ->
 
         for ev in result["evidence"]:
             if ev["type"] == "implicates":
+                if (
+                    ev["character"] in tracker.timeline.suspects
+                    and ev["character"] not in result["eliminated"]
+                ):
+                    tracker.introduce_suspect(ev["character"], chunk.index)
                 tracker.implicate(ev["character"], chunk.index, note=ev["note"])
             else:
                 tracker.clear(ev["character"], chunk.index, note=ev["note"])

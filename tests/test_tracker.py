@@ -42,6 +42,16 @@ class TestSuspectIntroduction:
         tracker.introduce_suspect("Charlie", chunk_index=2)
         assert len(tracker.active_suspects) == 3
 
+    def test_reintroduce_eliminated_suspect_reactivates(self, tracker):
+        tracker.introduce_suspect("Richard Cole", chunk_index=1)
+        tracker.eliminate_suspect("Richard Cole", chunk_index=3)
+
+        record = tracker.introduce_suspect("Richard Cole", chunk_index=5)
+
+        assert record.state == SuspectState.ACTIVE
+        assert record.introduced_at == 1
+        assert record.eliminated_at is None
+
 
 class TestSuspectElimination:
     def test_eliminate_suspect(self, tracker):
@@ -117,6 +127,15 @@ class TestStateReconstruction:
             "Bob": SuspectState.ACTIVE,
             "Charlie": SuspectState.ACTIVE,
         }
+
+    def test_get_state_at_chunk_after_reactivation(self, tracker):
+        tracker.introduce_suspect("Alice", chunk_index=0)
+        tracker.eliminate_suspect("Alice", chunk_index=2)
+        tracker.introduce_suspect("Alice", chunk_index=4)
+
+        assert tracker.get_state_at(1) == {"Alice": SuspectState.ACTIVE}
+        assert tracker.get_state_at(3) == {"Alice": SuspectState.ELIMINATED}
+        assert tracker.get_state_at(4) == {"Alice": SuspectState.ACTIVE}
 
 
 class TestSummary:
