@@ -29,19 +29,19 @@ TRANSCRIPT_EXPECTATIONS = {
         "must_keep": ["Felix Dunn", "Vivian Shore", "Owen Pritchard"],
         "must_strip": ["Transcript Archive", "Powered by Example Forum Software", "Posted:"],
         "chunk_size": 500,
-        "min_chunks": 4,
+        "min_chunks": 10,
     },
     "T04 - Bell Tower Static.txt": {
         "must_keep": ["Pastor Len Mercer", "Doria Pike", "Theo Marsh"],
         "must_strip": ["Transcript Archive", "Powered by Example Forum Software", "Posted:"],
         "chunk_size": 450,
-        "min_chunks": 3,
+        "min_chunks": 8,
     },
     "T05 - Last Ferry Interview.txt": {
         "must_keep": ["Isla Voss", "Marcus Reed", "Paula Kent"],
         "must_strip": ["Transcript Archive", "Powered by Example Forum Software", "Posted:"],
         "chunk_size": 450,
-        "min_chunks": 3,
+        "min_chunks": 9,
     },
 }
 
