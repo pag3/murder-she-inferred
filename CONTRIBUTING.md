@@ -12,6 +12,12 @@ python3 -m pip install -e '.[dev]'
 
 Most commands assume the repository root as the working directory.
 
+Installing in editable mode also gives you the package CLI:
+
+```bash
+murder-she-inferred --help
+```
+
 If you need local transcript data, create a project-local `.env` file:
 
 ```bash
@@ -34,8 +40,8 @@ test suite on pushes to `main` and on pull requests targeting `main`.
 
 Script-level tests should run the actual CLI tools where practical. The shared
 test data lives under `test-run/01-transcripts/`, and those tests should point
-the real scripts at that directory with CLI path arguments instead of relying on
-separate test-only codepaths.
+the real package CLI or stage scripts at that directory with CLI path arguments
+instead of relying on separate test-only codepaths.
 
 ## Project Layout
 

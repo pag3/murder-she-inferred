@@ -27,9 +27,18 @@ python3 -m pip install -e '.[dev]'
 4. Run the full test pipeline:
 
 ```bash
-PYTHONPATH=src python3 scripts/run_full_pipeline.py \
+murder-she-inferred \
   --run-root test-run \
   --codex-command "codex exec -"
+```
+
+You can also run individual stages through the same package CLI:
+
+```bash
+murder-she-inferred chunks --run-root test-run
+murder-she-inferred infer --run-root test-run --codex-command "codex exec -"
+murder-she-inferred qc --run-root test-run
+murder-she-inferred plot --run-root test-run
 ```
 
 ## Current State
