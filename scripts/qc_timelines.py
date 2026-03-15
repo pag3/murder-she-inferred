@@ -9,15 +9,23 @@ from collections import Counter
 from pathlib import Path
 from typing import Any
 
+from murder_she_inferred.settings import run_stage_path
+
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Run QC checks across *.timeline.json files.",
     )
     parser.add_argument(
+        "--run-root",
+        type=Path,
+        default=None,
+        help="Optional numbered run root. Uses 03-timelines and 04-qc under this root.",
+    )
+    parser.add_argument(
         "--input-dir",
         type=Path,
-        required=True,
+        default=None,
         help="Directory containing timeline JSON files.",
     )
     parser.add_argument(
@@ -109,8 +117,15 @@ def qc_file(path: Path, max_error_rate: float) -> dict[str, Any]:
 
 def main() -> int:
     args = parse_args()
-    input_dir: Path = args.input_dir
+    input_dir = args.input_dir or (run_stage_path(args.run_root, "timelines") if args.run_root else None)
+    if input_dir is None:
+        raise ValueError("Provide --input-dir or --run-root.")
     if not input_dir.exists():
+        if args.run_root and args.input_dir is None:
+            raise FileNotFoundError(
+                f"Input directory not found: {input_dir}\n"
+                "Expected numbered input folder 03-timelines under the run root."
+            )
         raise FileNotFoundError(f"Input directory not found: {input_dir}")
 
     files = sorted(input_dir.glob("*.timeline.json"))
@@ -140,13 +155,14 @@ def main() -> int:
                 f"| empty_rate={row['empty_rate']:.2f}"
             )
 
-    if args.report_path:
-        args.report_path.parent.mkdir(parents=True, exist_ok=True)
-        args.report_path.write_text(
+    report_path = args.report_path or (run_stage_path(args.run_root, "qc") / "report.json" if args.run_root else None)
+    if report_path:
+        report_path.parent.mkdir(parents=True, exist_ok=True)
+        report_path.write_text(
             json.dumps(summary, ensure_ascii=False, indent=2),
             encoding="utf-8",
         )
-        print(f"Wrote report: {args.report_path}")
+        print(f"Wrote report: {report_path}")
 
     return 0
 

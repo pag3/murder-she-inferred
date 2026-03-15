@@ -33,7 +33,11 @@ PYTHONPATH=src python3 scripts/build_episode_timeline_chunks.py
 5. Run Codex CLI inference:
 
 ```bash
+PYTHONPATH=src python3 scripts/build_episode_timeline_chunks.py \
+  --run-root test-run
+
 PYTHONPATH=src python3 scripts/infer_timelines_with_codex_cli.py \
+  --run-root test-run \
   --codex-command "codex exec -"
 ```
 
@@ -47,8 +51,26 @@ The repository currently supports a working prototype pipeline for:
 - HTML visualization rendering
 
 The intended design is to run the same CLI tools against either committed
-`tests/test_transcripts/` inputs or your private local transcript folders by
+`test-run/01-transcripts/` inputs or your private local transcript folders by
 changing CLI path arguments, rather than maintaining separate test-only tools.
+
+Preferred numbered run trees:
+
+```text
+test-run/
+  01-transcripts/
+  02-chunks/
+  03-timelines/
+  04-qc/
+  05-html/
+
+local-run/
+  01-transcripts/
+  02-chunks/
+  03-timelines/
+  04-qc/
+  05-html/
+```
 
 The model-training path described in the project spec is future work and is not
 implemented yet.

@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Any
 
 from murder_she_inferred.models import Chunk, EpisodeMetadata, EpisodeTimeline, SuspectState
-from murder_she_inferred.settings import get_data_dir
+from murder_she_inferred.settings import get_data_dir, run_stage_path
 from murder_she_inferred.tracker import SuspectTracker
 
 SYSTEM_PROMPT = """You are extracting suspect timeline updates from a mystery transcript.
@@ -45,15 +45,21 @@ def parse_args() -> argparse.Namespace:
         description="Run Codex CLI per chunk and build timeline output files.",
     )
     parser.add_argument(
+        "--run-root",
+        type=Path,
+        default=None,
+        help="Optional numbered run root. Uses 02-chunks and 03-timelines under this root.",
+    )
+    parser.add_argument(
         "--input-dir",
         type=Path,
-        default=default_input_dir,
+        default=None,
         help=f"Directory containing *.chunks.json files (default: {default_input_dir})",
     )
     parser.add_argument(
         "--output-dir",
         type=Path,
-        default=default_output_dir,
+        default=None,
         help=f"Directory to write *.timeline.json files (default: {default_output_dir})",
     )
     parser.add_argument(
@@ -296,15 +302,30 @@ def _build_timeline(chunks_payload: dict[str, Any], args: argparse.Namespace) ->
 
 def main() -> int:
     args = parse_args()
-    output_dir: Path = args.output_dir
+    default_data_dir = get_data_dir(must_exist=False)
+    input_dir = (
+        args.input_dir
+        or (run_stage_path(args.run_root, "chunks") if args.run_root else None)
+        or (default_data_dir / "episode_timeline_chunks")
+    )
+    output_dir = (
+        args.output_dir
+        or (run_stage_path(args.run_root, "timelines") if args.run_root else None)
+        or (default_data_dir / "episode_timelines_codex_cli")
+    )
     output_dir.mkdir(parents=True, exist_ok=True)
 
     if args.file is not None:
         files = [args.file]
     else:
-        files = sorted(args.input_dir.glob("*.chunks.json"))
+        files = sorted(input_dir.glob("*.chunks.json"))
 
     if not files:
+        if args.run_root and args.input_dir is None and args.file is None:
+            raise FileNotFoundError(
+                f"No input chunk files found in: {input_dir}\n"
+                "Expected numbered input folder 02-chunks under the run root."
+            )
         raise FileNotFoundError("No input chunk files found.")
 
     processed = 0

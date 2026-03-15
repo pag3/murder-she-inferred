@@ -206,3 +206,22 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# Local numbered run tree for private transcripts and generated artifacts
+local-run/*
+!local-run/.gitignore
+!local-run/01-transcripts/
+!local-run/02-chunks/
+!local-run/03-timelines/
+!local-run/04-qc/
+!local-run/05-html/
+local-run/01-transcripts/*
+!local-run/01-transcripts/.gitkeep
+local-run/02-chunks/*
+!local-run/02-chunks/.gitkeep
+local-run/03-timelines/*
+!local-run/03-timelines/.gitkeep
+local-run/04-qc/*
+!local-run/04-qc/.gitkeep
+local-run/05-html/*
+!local-run/05-html/.gitkeep

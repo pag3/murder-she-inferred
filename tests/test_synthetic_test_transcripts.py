@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import os
 import shlex
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -123,16 +124,104 @@ def test_build_episode_timeline_chunks_script_accepts_test_transcripts(
     assert "Transcript Archive" not in first_payload["chunks"][0]["text"]
 
 
+def test_build_episode_timeline_chunks_supports_run_root(
+    synthetic_test_transcripts_dir: Path,
+    tmp_path: Path,
+):
+    repo_root = Path(__file__).resolve().parents[1]
+    run_root = tmp_path / "run-root"
+    transcripts_dir = run_root / "01-transcripts"
+    shutil.copytree(synthetic_test_transcripts_dir, transcripts_dir)
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            "scripts/build_episode_timeline_chunks.py",
+            "--run-root",
+            str(run_root),
+            "--chunk-size",
+            "450",
+        ],
+        cwd=repo_root,
+        env={**os.environ, "PYTHONPATH": "src"},
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert (run_root / "02-chunks").exists()
+    assert len(list((run_root / "02-chunks").glob("*.chunks.json"))) == 5
+
+
+def test_explicit_stage_paths_override_run_root(
+    synthetic_test_transcripts_dir: Path,
+    tmp_path: Path,
+):
+    repo_root = Path(__file__).resolve().parents[1]
+    run_root = tmp_path / "run-root"
+    transcripts_dir = run_root / "01-transcripts"
+    override_output_dir = tmp_path / "override-chunks"
+    shutil.copytree(synthetic_test_transcripts_dir, transcripts_dir)
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            "scripts/build_episode_timeline_chunks.py",
+            "--run-root",
+            str(run_root),
+            "--output-dir",
+            str(override_output_dir),
+            "--chunk-size",
+            "450",
+        ],
+        cwd=repo_root,
+        env={**os.environ, "PYTHONPATH": "src"},
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert len(list(override_output_dir.glob("*.chunks.json"))) == 5
+    assert not (run_root / "02-chunks").exists()
+
+
+def test_run_root_requires_numbered_transcripts_folder(tmp_path: Path):
+    repo_root = Path(__file__).resolve().parents[1]
+    run_root = tmp_path / "run-root"
+    run_root.mkdir()
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            "scripts/build_episode_timeline_chunks.py",
+            "--run-root",
+            str(run_root),
+        ],
+        cwd=repo_root,
+        env={**os.environ, "PYTHONPATH": "src"},
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode != 0
+    assert "01-transcripts" in result.stderr
+
+
 def test_pipeline_scripts_run_against_committed_test_transcripts(
     synthetic_test_transcripts_dir: Path,
     tmp_path: Path,
 ):
     repo_root = Path(__file__).resolve().parents[1]
-    chunk_dir = tmp_path / "episode_timeline_chunks"
-    timeline_dir = tmp_path / "episode_timelines"
-    html_dir = tmp_path / "timeline_html"
-    qc_report = tmp_path / "timeline_qc" / "report.json"
+    run_root = tmp_path / "run-root"
+    transcripts_dir = run_root / "01-transcripts"
+    timeline_dir = run_root / "03-timelines"
+    html_dir = run_root / "05-html"
+    qc_report = run_root / "04-qc" / "report.json"
     fake_codex = tmp_path / "fake_codex.py"
+    shutil.copytree(synthetic_test_transcripts_dir, transcripts_dir)
     fake_codex.write_text(
         (
             "import json\n"
@@ -151,10 +240,8 @@ def test_pipeline_scripts_run_against_committed_test_transcripts(
         [
             sys.executable,
             "scripts/build_episode_timeline_chunks.py",
-            "--transcripts-dir",
-            str(synthetic_test_transcripts_dir),
-            "--output-dir",
-            str(chunk_dir),
+            "--run-root",
+            str(run_root),
             "--chunk-size",
             "450",
         ],
@@ -171,10 +258,8 @@ def test_pipeline_scripts_run_against_committed_test_transcripts(
         [
             sys.executable,
             "scripts/infer_timelines_with_codex_cli.py",
-            "--input-dir",
-            str(chunk_dir),
-            "--output-dir",
-            str(timeline_dir),
+            "--run-root",
+            str(run_root),
             "--codex-command",
             codex_command,
         ],
@@ -191,10 +276,8 @@ def test_pipeline_scripts_run_against_committed_test_transcripts(
         [
             sys.executable,
             "scripts/qc_timelines.py",
-            "--input-dir",
-            str(timeline_dir),
-            "--report-path",
-            str(qc_report),
+            "--run-root",
+            str(run_root),
         ],
         cwd=repo_root,
         env=env,
@@ -209,10 +292,8 @@ def test_pipeline_scripts_run_against_committed_test_transcripts(
         [
             sys.executable,
             "scripts/plot_timeline.py",
-            "--input-dir",
-            str(timeline_dir),
-            "--output-dir",
-            str(html_dir),
+            "--run-root",
+            str(run_root),
         ],
         cwd=repo_root,
         env=env,
@@ -222,8 +303,10 @@ def test_pipeline_scripts_run_against_committed_test_transcripts(
     )
     assert plot_result.returncode == 0, plot_result.stderr
 
+    chunk_paths = sorted((run_root / "02-chunks").glob("*.chunks.json"))
     timeline_paths = sorted(timeline_dir.glob("*.timeline.json"))
     html_paths = sorted(html_dir.glob("*.html"))
+    assert len(chunk_paths) == 5
     assert len(timeline_paths) == 5
     assert len(html_paths) == 6
     assert (html_dir / "index.html").exists()

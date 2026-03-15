@@ -148,4 +148,4 @@ def webtext_transcript_file(tmp_path):
 @pytest.fixture
 def synthetic_test_transcripts_dir() -> Path:
     """Return the committed directory of synthetic test-transcripts."""
-    return Path(__file__).parent / "test_transcripts"
+    return Path(__file__).resolve().parents[1] / "test-run" / "01-transcripts"

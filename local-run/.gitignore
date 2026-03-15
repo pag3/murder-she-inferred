@@ -1,0 +1,17 @@
+*
+!.gitignore
+!01-transcripts/
+!02-chunks/
+!03-timelines/
+!04-qc/
+!05-html/
+01-transcripts/*
+!01-transcripts/.gitkeep
+02-chunks/*
+!02-chunks/.gitkeep
+03-timelines/*
+!03-timelines/.gitkeep
+04-qc/*
+!04-qc/.gitkeep
+05-html/*
+!05-html/.gitkeep
