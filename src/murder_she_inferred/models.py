@@ -64,11 +64,28 @@ class SuspectRecord:
     introduced_at: int  # chunk index where first identified as suspect
     state: SuspectState = SuspectState.ACTIVE
     eliminated_at: Optional[int] = None  # chunk index where eliminated
+    transitions: list[tuple[int, SuspectState]] = field(default_factory=list)
+
+    def __post_init__(self) -> None:
+        """Seed state history with the initial introduction."""
+        if not self.transitions:
+            self.transitions.append((self.introduced_at, SuspectState.ACTIVE))
 
     def eliminate(self, chunk_index: int) -> None:
         """Mark this suspect as eliminated at the given chunk."""
+        if self.state == SuspectState.ELIMINATED:
+            return
         self.state = SuspectState.ELIMINATED
         self.eliminated_at = chunk_index
+        self.transitions.append((chunk_index, SuspectState.ELIMINATED))
+
+    def reactivate(self, chunk_index: int) -> None:
+        """Mark this suspect as active again at the given chunk."""
+        if self.state == SuspectState.ACTIVE:
+            return
+        self.state = SuspectState.ACTIVE
+        self.eliminated_at = None
+        self.transitions.append((chunk_index, SuspectState.ACTIVE))
 
 
 @dataclass
@@ -95,17 +112,17 @@ class EpisodeTimeline:
     def suspects_at_chunk(self, chunk_index: int) -> dict[str, SuspectState]:
         """Return the suspect states as of a given chunk index.
 
-        Reconstructs the state by replaying introductions and eliminations
-        up to and including the specified chunk.
+        Reconstructs the state by replaying suspect transitions up to and
+        including the specified chunk.
         """
         states: dict[str, SuspectState] = {}
         for suspect in self.suspects.values():
-            if suspect.introduced_at <= chunk_index:
-                if (
-                    suspect.eliminated_at is not None
-                    and suspect.eliminated_at <= chunk_index
-                ):
-                    states[suspect.name] = SuspectState.ELIMINATED
-                else:
-                    states[suspect.name] = SuspectState.ACTIVE
+            if suspect.introduced_at > chunk_index:
+                continue
+            current_state = SuspectState.ACTIVE
+            for transition_chunk, transition_state in suspect.transitions:
+                if transition_chunk > chunk_index:
+                    break
+                current_state = transition_state
+            states[suspect.name] = current_state
         return states
