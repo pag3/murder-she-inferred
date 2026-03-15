@@ -95,6 +95,18 @@ Make the resulting timelines easier to read and easier to share.
 
 ### Next
 
+#### Clarify which visualizations are possible now versus which need richer data
+
+- Status: planned
+- Why it matters: the current timeline outputs already support several strong
+  state-based visuals, but score-driven charts will need a deliberate timeline
+  data contract extension rather than just front-end polish.
+- Definition of done: the roadmap and future visualization work clearly
+  distinguish charts that can be built from current fields such as
+  `introduced`, `eliminated`, `evidence`,
+  `active_suspects_after_chunk`, and `eliminated_suspects_after_chunk`
+  from charts that require per-chunk suspicion scores.
+
 #### Improve output visualization quality
 
 - Status: planned
@@ -103,6 +115,34 @@ Make the resulting timelines easier to read and easier to share.
 - Definition of done: chart output is easier to read, highlights state changes
   more clearly, and is suitable for sharing.
 
+#### Build a state-based heatmap timeline from current outputs
+
+- Status: planned
+- Why it matters: the existing timeline JSON already supports a clearer visual
+  overview than the current chart by showing suspect introduction, persistence,
+  and elimination in one scan-friendly grid.
+- Definition of done: a heatmap-style chart renders current suspect states using
+  the existing categorical output only, with distinct treatments for
+  not-yet-introduced, active, and eliminated suspects.
+
+#### Build an elimination bracket or survival board from current outputs
+
+- Status: planned
+- Why it matters: a survival-style infographic is a strong social-friendly way
+  to show who stays in contention and when each suspect drops out.
+- Definition of done: an episode output can render suspects as a progressive
+  field that narrows over time using existing introduction and elimination
+  events without needing numeric suspicion values.
+
+#### Build an evidence impact ladder from current outputs
+
+- Status: planned
+- Why it matters: the project already captures implicating and clearing notes,
+  which can be repackaged into a compact clue-driven story for each episode.
+- Definition of done: an episode output highlights the most important evidence
+  beats in order using existing `evidence` annotations and ties them back to
+  the relevant suspect and chunk.
+
 #### Decide which output formats matter beyond HTML
 
 - Status: planned
@@ -110,6 +150,48 @@ Make the resulting timelines easier to read and easier to share.
   deliverable is local review, publication, or side-by-side analysis.
 - Definition of done: the project explicitly prioritizes HTML-only for now or
   names the next export format to support after HTML.
+
+### Later
+
+#### Add per-chunk suspicion scores as an optional timeline extension
+
+- Status: later
+- Why it matters: some of the strongest infographic concepts need more than
+  categorical suspect state and evidence notes; they need a numeric suspicion
+  score tracked for each suspect across chunks.
+- Definition of done: the timeline contract can optionally carry per-chunk
+  suspicion scores per suspect while preserving the existing active/eliminated
+  model for current visualizations and QC.
+
+#### Build a suspicion race chart once score data exists
+
+- Status: later
+- Why it matters: a race-style line chart is one of the clearest ways to show
+  suspicion rising and falling across an episode, but it depends on chunk-level
+  score movement rather than binary state changes.
+- Definition of done: an episode output can plot each suspect's suspicion score
+  over time using the future per-chunk score map rather than inferring rank from
+  categorical state alone.
+
+#### Build ranked top-suspect cards once score data exists
+
+- Status: later
+- Why it matters: ranked act-by-act cards are compelling for social sharing, but
+  numeric ordering cannot be derived reliably from the current active/eliminated
+  model.
+- Definition of done: episode outputs can render ranked suspect snapshots for
+  key points in the story using score-derived ordering rather than implying
+  precision from evidence notes alone.
+
+#### Build a score-intensity heatmap timeline once score data exists
+
+- Status: later
+- Why it matters: a richer heatmap with color intensity would communicate not
+  just whether a suspect is still in play, but how strongly the model suspects
+  them at each point.
+- Definition of done: a second heatmap mode renders per-suspect suspicion score
+  intensity by chunk, distinct from the state-based heatmap supported by the
+  current timeline JSON.
 
 ### Done
 
