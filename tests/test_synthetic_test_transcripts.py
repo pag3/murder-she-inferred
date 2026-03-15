@@ -314,3 +314,52 @@ def test_pipeline_scripts_run_against_committed_test_transcripts(
     qc_payload = json.loads(qc_report.read_text(encoding="utf-8"))
     assert qc_payload["file_count"] == 5
     assert qc_payload["input_dir"] == str(timeline_dir)
+
+
+def test_run_full_pipeline_script_runs_all_stages(
+    synthetic_test_transcripts_dir: Path,
+    tmp_path: Path,
+):
+    repo_root = Path(__file__).resolve().parents[1]
+    run_root = tmp_path / "run-root"
+    transcripts_dir = run_root / "01-transcripts"
+    fake_codex = tmp_path / "fake_codex.py"
+    shutil.copytree(synthetic_test_transcripts_dir, transcripts_dir)
+    fake_codex.write_text(
+        (
+            "import json\n"
+            "print(json.dumps({"
+            "\"introduced\": [], "
+            "\"eliminated\": [], "
+            "\"evidence\": []"
+            "}))\n"
+        ),
+        encoding="utf-8",
+    )
+
+    env = {**os.environ, "PYTHONPATH": "src"}
+    codex_command = f"{shlex.quote(sys.executable)} {shlex.quote(str(fake_codex))}"
+    result = subprocess.run(
+        [
+            sys.executable,
+            "scripts/run_full_pipeline.py",
+            "--run-root",
+            str(run_root),
+            "--codex-command",
+            codex_command,
+            "--chunk-size",
+            "450",
+        ],
+        cwd=repo_root,
+        env=env,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert (run_root / "02-chunks").exists()
+    assert (run_root / "03-timelines").exists()
+    assert (run_root / "04-qc" / "report.json").exists()
+    assert (run_root / "05-html" / "index.html").exists()
+    assert "Full pipeline completed" in result.stdout

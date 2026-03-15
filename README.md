@@ -24,19 +24,10 @@ cp .env.example .env
 python3 -m pip install -e '.[dev]'
 ```
 
-4. Build transcript chunks:
+4. Run the full test pipeline:
 
 ```bash
-PYTHONPATH=src python3 scripts/build_episode_timeline_chunks.py
-```
-
-5. Run Codex CLI inference:
-
-```bash
-PYTHONPATH=src python3 scripts/build_episode_timeline_chunks.py \
-  --run-root test-run
-
-PYTHONPATH=src python3 scripts/infer_timelines_with_codex_cli.py \
+PYTHONPATH=src python3 scripts/run_full_pipeline.py \
   --run-root test-run \
   --codex-command "codex exec -"
 ```

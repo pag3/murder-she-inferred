@@ -64,6 +64,19 @@ The same CLI tools are meant to run against either committed
 `test-run/01-transcripts/` data or your private local transcript folders. The
 difference should be the path arguments you pass, not a separate test-only toolchain.
 
+## Run The Full Pipeline
+
+For the full numbered pipeline in one command:
+
+```bash
+PYTHONPATH=src python3 scripts/run_full_pipeline.py \
+  --run-root test-run \
+  --codex-command "codex exec -"
+```
+
+That command runs chunking, inference, QC, and plotting in order using the same
+underlying stage scripts documented below.
+
 ## Build Chunk Files
 
 Generate chunked transcript payloads with:
