@@ -9,21 +9,29 @@ import json
 from pathlib import Path
 from typing import Any
 
+from murder_she_inferred.settings import run_stage_path
+
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Render timeline JSON files to HTML charts.",
     )
     parser.add_argument(
+        "--run-root",
+        type=Path,
+        default=None,
+        help="Optional numbered run root. Uses 03-timelines and 05-html under this root.",
+    )
+    parser.add_argument(
         "--input-dir",
         type=Path,
-        required=True,
+        default=None,
         help="Directory containing *.timeline.json files.",
     )
     parser.add_argument(
         "--output-dir",
         type=Path,
-        required=True,
+        default=None,
         help="Directory for generated HTML files.",
     )
     parser.add_argument(
@@ -265,9 +273,16 @@ def _render_episode(payload: dict[str, Any]) -> str:
 
 def main() -> int:
     args = parse_args()
-    input_dir: Path = args.input_dir
-    output_dir: Path = args.output_dir
+    input_dir = args.input_dir or (run_stage_path(args.run_root, "timelines") if args.run_root else None)
+    output_dir = args.output_dir or (run_stage_path(args.run_root, "html") if args.run_root else None)
+    if input_dir is None or output_dir is None:
+        raise ValueError("Provide --run-root or both --input-dir and --output-dir.")
     if not input_dir.exists():
+        if args.run_root and args.input_dir is None:
+            raise FileNotFoundError(
+                f"Input directory not found: {input_dir}\n"
+                "Expected numbered input folder 03-timelines under the run root."
+            )
         raise FileNotFoundError(f"Input directory not found: {input_dir}")
     output_dir.mkdir(parents=True, exist_ok=True)
 

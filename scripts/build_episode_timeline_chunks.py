@@ -13,7 +13,7 @@ from murder_she_inferred.ingest import (
     split_into_chunks,
     strip_boilerplate,
 )
-from murder_she_inferred.settings import get_data_dir
+from murder_she_inferred.settings import get_data_dir, run_stage_path
 
 _SLUG_LINE_RE = re.compile(
     r"^\s*(?:INT\.|EXT\.|INT\./EXT\.|EXT\./INT\.|INT/EXT|I/E\.)\s",
@@ -58,15 +58,21 @@ def parse_args() -> argparse.Namespace:
         description="Build chunked episode timeline files from transcripts.",
     )
     parser.add_argument(
+        "--run-root",
+        type=Path,
+        default=None,
+        help="Optional numbered run root. Uses 01-transcripts and 02-chunks under this root.",
+    )
+    parser.add_argument(
         "--transcripts-dir",
         type=Path,
-        default=transcripts_dir,
+        default=None,
         help=f"Directory with transcript .txt files (default: {transcripts_dir})",
     )
     parser.add_argument(
         "--output-dir",
         type=Path,
-        default=out_dir,
+        default=None,
         help=f"Output directory for chunked timeline files (default: {out_dir})",
     )
     parser.add_argument(
@@ -80,11 +86,25 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> int:
     args = parse_args()
-    transcripts_dir: Path = args.transcripts_dir
-    output_dir: Path = args.output_dir
+    default_data_dir = get_data_dir(must_exist=False)
+    transcripts_dir = (
+        args.transcripts_dir
+        or (run_stage_path(args.run_root, "transcripts") if args.run_root else None)
+        or (default_data_dir / "transcripts")
+    )
+    output_dir = (
+        args.output_dir
+        or (run_stage_path(args.run_root, "chunks") if args.run_root else None)
+        or (default_data_dir / "episode_timeline_chunks")
+    )
     chunk_size: int = args.chunk_size
 
     if not transcripts_dir.exists():
+        if args.run_root and args.transcripts_dir is None:
+            raise FileNotFoundError(
+                f"Transcripts directory not found: {transcripts_dir}\n"
+                "Expected numbered input folder 01-transcripts under the run root."
+            )
         raise FileNotFoundError(f"Transcripts directory not found: {transcripts_dir}")
 
     output_dir.mkdir(parents=True, exist_ok=True)

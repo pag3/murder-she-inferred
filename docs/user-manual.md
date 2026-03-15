@@ -30,6 +30,24 @@ murder-she-inferred-data/
 Only `transcripts/` needs to exist up front. The scripts create output
 directories as needed.
 
+For manual step-by-step inspection, the preferred numbered layout is:
+
+```text
+test-run/
+  01-transcripts/
+  02-chunks/
+  03-timelines/
+  04-qc/
+  05-html/
+
+local-run/
+  01-transcripts/
+  02-chunks/
+  03-timelines/
+  04-qc/
+  05-html/
+```
+
 ## Transcript Inputs
 
 Place plain-text episode transcripts in:
@@ -43,7 +61,7 @@ Supported transcript patterns today:
 - continuous-text transcripts that need boilerplate stripping and fixed-size chunking
 
 The same CLI tools are meant to run against either committed
-`tests/test_transcripts/` data or your private local transcript folders. The
+`test-run/01-transcripts/` data or your private local transcript folders. The
 difference should be the path arguments you pass, not a separate test-only toolchain.
 
 ## Build Chunk Files
@@ -51,7 +69,8 @@ difference should be the path arguments you pass, not a separate test-only toolc
 Generate chunked transcript payloads with:
 
 ```bash
-PYTHONPATH=src python3 scripts/build_episode_timeline_chunks.py
+PYTHONPATH=src python3 scripts/build_episode_timeline_chunks.py \
+  --run-root test-run
 ```
 
 By default this reads from:
@@ -67,9 +86,16 @@ and writes chunk files to:
 ```
 
 Useful options:
+- `--run-root`: derive numbered stage folders from a run root like `test-run` or `local-run`
 - `--transcripts-dir`: override the transcript source directory
 - `--output-dir`: override the chunk output directory
 - `--chunk-size`: set the fixed chunk size for continuous-text transcripts
+
+With `--run-root test-run`, the chunk output goes to:
+
+```text
+test-run/02-chunks/
+```
 
 ## Run Codex CLI Inference
 
@@ -77,6 +103,7 @@ Build timeline JSON files from chunk files with:
 
 ```bash
 PYTHONPATH=src python3 scripts/infer_timelines_with_codex_cli.py \
+  --run-root test-run \
   --codex-command "codex exec -"
 ```
 
@@ -93,16 +120,23 @@ and writes timeline files to:
 ```
 
 Useful options:
+- `--run-root`: derive numbered stage folders from a run root like `test-run` or `local-run`
 - `--file`: process a single `*.chunks.json` file
 - `--max-chunks`: limit processing for a quick experiment
 - `--retries`: retry invalid model output per chunk
 - `--sleep-seconds`: pause between chunk calls
 
+With `--run-root test-run`, the timeline output goes to:
+
+```text
+test-run/03-timelines/
+```
+
 Example single-episode run:
 
 ```bash
 PYTHONPATH=src python3 scripts/infer_timelines_with_codex_cli.py \
-  --file "../murder-she-inferred-data/episode_timeline_chunks/S01E03 - 01x03 - Deadly Lady.chunks.json" \
+  --run-root local-run \
   --max-chunks 5 \
   --codex-command "codex exec -"
 ```
@@ -113,12 +147,19 @@ Check generated timeline files for obvious issues with:
 
 ```bash
 PYTHONPATH=src python3 scripts/qc_timelines.py \
-  --input-dir "../murder-she-inferred-data/episode_timelines_codex_cli"
+  --run-root test-run
 ```
 
 Useful options:
+- `--run-root`: derive numbered stage folders from a run root like `test-run` or `local-run`
 - `--max-error-rate`: flag episodes above a chosen error threshold
 - `--report-path`: write a JSON QC summary report
+
+With `--run-root test-run`, the default report path is:
+
+```text
+test-run/04-qc/report.json
+```
 
 ## Render HTML Visualizations
 
@@ -126,19 +167,27 @@ Generate self-contained HTML charts with:
 
 ```bash
 PYTHONPATH=src python3 scripts/plot_timeline.py \
-  --input-dir "../murder-she-inferred-data/episode_timelines_codex_cli" \
-  --output-dir "../murder-she-inferred-data/timeline_html"
+  --run-root test-run
 ```
 
 Useful options:
+- `--run-root`: derive numbered stage folders from a run root like `test-run` or `local-run`
 - `--limit`: render only the first N episodes
+
+With `--run-root test-run`, the HTML output goes to:
+
+```text
+test-run/05-html/
+```
 
 ## Expected Outputs
 
-- `episode_timeline_chunks/*.chunks.json`: ordered transcript chunks
-- `episode_timelines_codex_cli/*.timeline.json`: inferred suspect timelines
-- `timeline_qc/*.json`: optional QC reports if `--report-path` is used
-- `timeline_html/*.html`: rendered episode charts
+In the numbered run-tree layout:
+- `01-transcripts/*.txt`: raw transcript inputs
+- `02-chunks/*.chunks.json`: ordered transcript chunks
+- `03-timelines/*.timeline.json`: inferred suspect timelines
+- `04-qc/report.json`: QC report output by default when using `--run-root`
+- `05-html/*.html`: rendered episode charts plus `index.html`
 
 ## Troubleshooting
 

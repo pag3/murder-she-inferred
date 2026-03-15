@@ -14,6 +14,13 @@ _DOTENV_LOADED = False
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_DATA_DIR = PROJECT_ROOT.parent / "murder-she-inferred-data"
+RUN_STAGE_DIRS = {
+    "transcripts": "01-transcripts",
+    "chunks": "02-chunks",
+    "timelines": "03-timelines",
+    "qc": "04-qc",
+    "html": "05-html",
+}
 
 
 def _load_project_dotenv() -> None:
@@ -70,3 +77,10 @@ def data_path(*parts: str, must_exist: bool = True) -> Path:
     if must_exist and not path.exists():
         raise FileNotFoundError(f"Data path does not exist: {path}")
     return path
+
+
+def run_stage_path(run_root: str | Path, stage: str) -> Path:
+    """Return the numbered directory for a pipeline stage under a run root."""
+    if stage not in RUN_STAGE_DIRS:
+        raise KeyError(f"Unknown run stage: {stage}")
+    return Path(run_root).expanduser() / RUN_STAGE_DIRS[stage]
