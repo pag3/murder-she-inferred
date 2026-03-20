@@ -308,8 +308,12 @@ def test_pipeline_scripts_run_against_committed_test_transcripts(
     html_paths = sorted(html_dir.glob("*.html"))
     assert len(chunk_paths) == 5
     assert len(timeline_paths) == 5
-    assert len(html_paths) == 6
+    assert len(html_paths) == 11
     assert (html_dir / "index.html").exists()
+    assert len(list(html_dir.glob("*.timeline.html"))) == 5
+    assert len(list(html_dir.glob("*.evidence.html"))) == 5
+    first_evidence = sorted(html_dir.glob("*.evidence.html"))[0]
+    assert "No evidence annotations yet." in first_evidence.read_text(encoding="utf-8")
 
     qc_payload = json.loads(qc_report.read_text(encoding="utf-8"))
     assert qc_payload["file_count"] == 5

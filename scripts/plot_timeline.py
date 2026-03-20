@@ -154,7 +154,128 @@ def _evidence_lookup(events: list[dict[str, Any]]) -> dict[tuple[int, str], set[
     return lookup
 
 
-def _render_episode(payload: dict[str, Any]) -> str:
+def _evidence_groups(events: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    groups: list[dict[str, Any]] = []
+    for ev in events:
+        notes: list[dict[str, str]] = []
+        for item in ev.get("evidence") or []:
+            if not isinstance(item, dict):
+                continue
+            evidence_type = _clean_name(item.get("type", "")).lower()
+            character = _clean_name(item.get("character", ""))
+            note = _clean_name(item.get("note", ""))
+            if not character or evidence_type not in {"implicates", "clears"}:
+                continue
+            notes.append(
+                {
+                    "type": evidence_type,
+                    "character": character,
+                    "note": note,
+                }
+            )
+        if notes:
+            groups.append(
+                {
+                    "chunk_index": int(ev.get("chunk_index", -1)),
+                    "notes": notes,
+                }
+            )
+    return groups
+
+
+def _page_chrome(title: str, body: str, extra_styles: str = "") -> str:
+    return f"""<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>{html.escape(title)}</title>
+  <style>
+    :root {{
+      --bg: #f7f5ef;
+      --ink: #122025;
+      --muted: #61717f;
+      --card: #ffffff;
+      --line: #d7dde4;
+      --active: #2f80ed;
+      --eliminated: #94a3b8;
+      --inactive: #dde6ec;
+      --not-introduced: #f8fafc;
+      --implicates: #c96d1a;
+      --clears: #157f6b;
+    }}
+    body {{
+      margin: 0;
+      background: radial-gradient(circle at 20% 0%, #fff9e9 0%, var(--bg) 40%, #eef4f8 100%);
+      color: var(--ink);
+      font-family: "Avenir Next", "Helvetica Neue", Helvetica, sans-serif;
+    }}
+    .wrap {{
+      max-width: 1300px;
+      margin: 28px auto;
+      padding: 0 18px 40px;
+    }}
+    h1 {{
+      margin: 0 0 10px;
+      font-size: 28px;
+      letter-spacing: 0.3px;
+    }}
+    p.meta {{
+      margin: 0 0 16px;
+      color: var(--muted);
+      font-size: 14px;
+    }}
+    .card {{
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 14px;
+      box-shadow: 0 8px 20px rgba(15, 25, 35, 0.06);
+    }}
+    .nav {{
+      display: flex;
+      gap: 10px;
+      margin: 0 0 14px;
+      flex-wrap: wrap;
+    }}
+    .nav a {{
+      color: #0c5cc0;
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 600;
+    }}
+    .nav a:hover {{
+      text-decoration: underline;
+    }}
+    table {{
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 16px;
+      font-size: 13px;
+      background: #fff;
+    }}
+    th, td {{
+      border: 1px solid var(--line);
+      padding: 6px 8px;
+      text-align: left;
+      vertical-align: top;
+    }}
+    th {{
+      background: #f0f4f7;
+    }}
+{extra_styles}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+{body}
+  </div>
+</body>
+</html>
+"""
+
+
+def _render_heatmap_episode(payload: dict[str, Any], evidence_href: str) -> str:
     episode_id = str(payload.get("episode_id", "unknown-episode"))
     events = [e for e in (payload.get("events") or []) if isinstance(e, dict)]
     suspects = _ordered_suspects(events)
@@ -235,7 +356,7 @@ def _render_episode(payload: dict[str, Any]) -> str:
                 svg_parts.append(
                     f'<line x1="{x + cell_w - 13}" y1="{y + 8}" '
                     f'x2="{x + cell_w - 7}" y2="{y + 8}" stroke="#157f6b" stroke-width="1.5" />'
-                )
+        )
 
     svg_parts.append("</svg>")
     chart_svg = "\n".join(svg_parts)
@@ -261,106 +382,12 @@ def _render_episode(payload: dict[str, Any]) -> str:
             "</tr>"
         )
 
-    return f"""<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>{html.escape(episode_id)} Timeline</title>
-  <style>
-    :root {{
-      --bg: #f7f5ef;
-      --ink: #122025;
-      --muted: #61717f;
-      --card: #ffffff;
-      --line: #d7dde4;
-      --active: #2f80ed;
-      --eliminated: #94a3b8;
-      --inactive: #dde6ec;
-      --not-introduced: #f8fafc;
-      --implicates: #c96d1a;
-      --clears: #157f6b;
-    }}
-    body {{
-      margin: 0;
-      background: radial-gradient(circle at 20% 0%, #fff9e9 0%, var(--bg) 40%, #eef4f8 100%);
-      color: var(--ink);
-      font-family: "Avenir Next", "Helvetica Neue", Helvetica, sans-serif;
-    }}
-    .wrap {{
-      max-width: 1300px;
-      margin: 28px auto;
-      padding: 0 18px 40px;
-    }}
-    h1 {{
-      margin: 0 0 10px;
-      font-size: 28px;
-      letter-spacing: 0.3px;
-    }}
-    p.meta {{
-      margin: 0 0 16px;
-      color: var(--muted);
-      font-size: 14px;
-    }}
-    .card {{
-      background: var(--card);
-      border: 1px solid var(--line);
-      border-radius: 14px;
-      padding: 14px;
-      box-shadow: 0 8px 20px rgba(15, 25, 35, 0.06);
-    }}
-    .legend {{
-      display: flex;
-      flex-wrap: wrap;
-      gap: 14px;
-      margin: 8px 0 14px;
-      font-size: 13px;
-      color: var(--muted);
-    }}
-    .swatch {{
-      display: inline-block;
-      width: 14px;
-      height: 14px;
-      border: 1px solid var(--line);
-      margin-right: 6px;
-      vertical-align: -2px;
-      border-radius: 4px;
-    }}
-    .marker {{
-      display: inline-block;
-      width: 12px;
-      height: 12px;
-      border-radius: 999px;
-      margin-right: 6px;
-      vertical-align: -1px;
-    }}
-    .marker-clears {{
-      width: 10px;
-      height: 10px;
-      border: 2px solid var(--clears);
-      background: transparent;
-    }}
-    table {{
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 16px;
-      font-size: 13px;
-      background: #fff;
-    }}
-    th, td {{
-      border: 1px solid var(--line);
-      padding: 6px 8px;
-      text-align: left;
-      vertical-align: top;
-    }}
-    th {{
-      background: #f0f4f7;
-    }}
-  </style>
-</head>
-<body>
-  <div class="wrap">
+    body = f"""
     <h1>{html.escape(episode_id)}</h1>
+    <div class="nav">
+      <a href="{html.escape(evidence_href)}">View Evidence Ladder</a>
+      <a href="index.html">Back to Index</a>
+    </div>
     <p class="meta">Chunks: {chunks} | Suspects observed: {len(suspects)}</p>
     <div class="card">
       <div class="legend">
@@ -390,10 +417,245 @@ def _render_episode(payload: dict[str, Any]) -> str:
         </tbody>
       </table>
     </div>
-  </div>
-</body>
-</html>
 """
+    extra_styles = """
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 14px;
+      margin: 8px 0 14px;
+      font-size: 13px;
+      color: var(--muted);
+    }
+    .swatch {
+      display: inline-block;
+      width: 14px;
+      height: 14px;
+      border: 1px solid var(--line);
+      margin-right: 6px;
+      vertical-align: -2px;
+      border-radius: 4px;
+    }
+    .marker {
+      display: inline-block;
+      width: 12px;
+      height: 12px;
+      border-radius: 999px;
+      margin-right: 6px;
+      vertical-align: -1px;
+    }
+    .marker-clears {
+      width: 10px;
+      height: 10px;
+      border: 2px solid var(--clears);
+      background: transparent;
+    }
+"""
+    return _page_chrome(f"{episode_id} Timeline", body, extra_styles)
+
+
+def _render_evidence_ladder_episode(payload: dict[str, Any], heatmap_href: str) -> str:
+    episode_id = str(payload.get("episode_id", "unknown-episode"))
+    events = [e for e in (payload.get("events") or []) if isinstance(e, dict)]
+    groups = _evidence_groups(events)
+    total_notes = sum(len(group["notes"]) for group in groups)
+    implicates = sum(
+        1
+        for group in groups
+        for note in group["notes"]
+        if note["type"] == "implicates"
+    )
+    clears = sum(
+        1
+        for group in groups
+        for note in group["notes"]
+        if note["type"] == "clears"
+    )
+
+    if groups:
+        sections: list[str] = []
+        for group in groups:
+            chunk_index = group["chunk_index"]
+            note_items: list[str] = []
+            for note in group["notes"]:
+                chip_class = "chip-implicates" if note["type"] == "implicates" else "chip-clears"
+                safe_character = html.escape(note["character"])
+                safe_note = html.escape(note["note"] or "No note provided.")
+                note_items.append(
+                    '<li class="evidence-item">'
+                    f'<span class="chip {chip_class}">{html.escape(note["type"])}</span>'
+                    f'<strong>{safe_character}</strong>'
+                    f'<p>{safe_note}</p>'
+                    "</li>"
+                )
+            sections.append(
+                '<section class="chunk-group">'
+                f'<div class="chunk-label">Chunk {chunk_index}</div>'
+                f'<ul class="evidence-list">{"".join(note_items)}</ul>'
+                "</section>"
+            )
+        ladder_body = "".join(sections)
+    else:
+        ladder_body = (
+            '<div class="card empty-state">'
+            "<strong>No evidence annotations yet.</strong>"
+            "<p>This episode produced no implicates or clears notes, so the ladder view has nothing to list yet.</p>"
+            "</div>"
+        )
+
+    body = f"""
+    <h1>{html.escape(episode_id)}</h1>
+    <div class="nav">
+      <a href="{html.escape(heatmap_href)}">View Heatmap</a>
+      <a href="index.html">Back to Index</a>
+    </div>
+    <p class="meta">Evidence Impact Ladder</p>
+    <div class="summary-grid">
+      <div class="card summary-card">
+        <div class="summary-value">{total_notes}</div>
+        <div class="summary-label">evidence notes</div>
+      </div>
+      <div class="card summary-card">
+        <div class="summary-value">{len(groups)}</div>
+        <div class="summary-label">chunks with evidence</div>
+      </div>
+      <div class="card summary-card">
+        <div class="summary-value">{implicates}</div>
+        <div class="summary-label">implicates</div>
+      </div>
+      <div class="card summary-card">
+        <div class="summary-value">{clears}</div>
+        <div class="summary-label">clears</div>
+      </div>
+    </div>
+    <div class="ladder">
+      {ladder_body}
+    </div>
+"""
+    extra_styles = """
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    .summary-card {
+      text-align: center;
+      padding: 18px 14px;
+    }
+    .summary-value {
+      font-size: 30px;
+      font-weight: 700;
+      color: #183642;
+    }
+    .summary-label {
+      font-size: 13px;
+      color: var(--muted);
+      margin-top: 4px;
+    }
+    .ladder {
+      display: grid;
+      gap: 14px;
+    }
+    .chunk-group {
+      position: relative;
+      padding-left: 26px;
+    }
+    .chunk-group::before {
+      content: "";
+      position: absolute;
+      left: 8px;
+      top: 4px;
+      bottom: -14px;
+      width: 2px;
+      background: linear-gradient(to bottom, #cfd8df 0%, #e6edf2 100%);
+    }
+    .chunk-label {
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+    .evidence-list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      display: grid;
+      gap: 10px;
+    }
+    .evidence-item {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 14px 16px;
+      box-shadow: 0 8px 20px rgba(15, 25, 35, 0.06);
+    }
+    .evidence-item strong {
+      display: inline-block;
+      margin-left: 8px;
+      color: #183642;
+    }
+    .evidence-item p {
+      margin: 10px 0 0;
+      color: #29404b;
+      line-height: 1.5;
+      font-size: 14px;
+    }
+    .chip {
+      display: inline-block;
+      border-radius: 999px;
+      padding: 4px 10px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+    .chip-implicates {
+      background: #fff0df;
+      color: #9c4d0a;
+    }
+    .chip-clears {
+      background: #e9f7f4;
+      color: #0f6b5b;
+    }
+    .empty-state p {
+      margin: 8px 0 0;
+      color: var(--muted);
+    }
+"""
+    return _page_chrome(f"{episode_id} Evidence Ladder", body, extra_styles)
+
+
+def _render_index(entries: list[dict[str, str]]) -> str:
+    rows = [
+        "<tr>"
+        f"<td>{html.escape(entry['episode_id'])}</td>"
+        f'<td><a href="{html.escape(entry["heatmap_href"])}">Heatmap</a></td>'
+        f'<td><a href="{html.escape(entry["evidence_href"])}">Evidence Ladder</a></td>'
+        "</tr>"
+        for entry in entries
+    ]
+    body = f"""
+    <h1>Timeline Visualizations</h1>
+    <p class="meta">Rendered episodes: {len(entries)}</p>
+    <div class="card">
+      <table>
+        <thead>
+          <tr>
+            <th>episode</th>
+            <th>heatmap</th>
+            <th>evidence ladder</th>
+          </tr>
+        </thead>
+        <tbody>
+          {"".join(rows)}
+        </tbody>
+      </table>
+    </div>
+"""
+    return _page_chrome("Timeline Visualizations", body)
 
 
 def main() -> int:
@@ -418,64 +680,31 @@ def main() -> int:
         raise FileNotFoundError(f"No timeline files found in: {input_dir}")
 
     rendered = 0
-    index_rows: list[str] = []
+    index_entries: list[dict[str, str]] = []
     for path in files:
         payload = _read_json(path)
         episode_id = str(payload.get("episode_id", path.stem))
-        out_name = f"{path.stem.replace('.timeline', '')}.timeline.html"
-        out_path = output_dir / out_name
-        out_path.write_text(_render_episode(payload), encoding="utf-8")
-        rendered += 1
-        index_rows.append(
-            f'<li><a href="{html.escape(out_name)}">{html.escape(episode_id)}</a></li>'
+        heatmap_name = f"{path.stem.replace('.timeline', '')}.timeline.html"
+        evidence_name = f"{path.stem.replace('.timeline', '')}.evidence.html"
+        (output_dir / heatmap_name).write_text(
+            _render_heatmap_episode(payload, evidence_name),
+            encoding="utf-8",
+        )
+        (output_dir / evidence_name).write_text(
+            _render_evidence_ladder_episode(payload, heatmap_name),
+            encoding="utf-8",
+        )
+        rendered += 2
+        index_entries.append(
+            {
+                "episode_id": episode_id,
+                "heatmap_href": heatmap_name,
+                "evidence_href": evidence_name,
+            }
         )
 
-    index_html = f"""<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Timeline Visualizations</title>
-  <style>
-    body {{
-      font-family: "Avenir Next", "Helvetica Neue", Helvetica, sans-serif;
-      background: #f4f7f9;
-      color: #122025;
-      margin: 0;
-    }}
-    .wrap {{
-      max-width: 900px;
-      margin: 30px auto;
-      padding: 0 16px 30px;
-    }}
-    ul {{
-      background: #fff;
-      border: 1px solid #d6dbe1;
-      border-radius: 10px;
-      padding: 16px 24px;
-      line-height: 1.7;
-    }}
-    a {{
-      color: #0c5cc0;
-      text-decoration: none;
-    }}
-    a:hover {{
-      text-decoration: underline;
-    }}
-  </style>
-</head>
-<body>
-  <div class="wrap">
-    <h1>Timeline Visualizations</h1>
-    <p>Rendered episodes: {rendered}</p>
-    <ul>
-      {"".join(index_rows)}
-    </ul>
-  </div>
-</body>
-</html>
-"""
-    (output_dir / "index.html").write_text(index_html, encoding="utf-8")
+    (output_dir / "index.html").write_text(_render_index(index_entries), encoding="utf-8")
+    rendered += 1
 
     print(f"Rendered HTML files: {rendered}")
     print(f"Output directory: {output_dir}")
