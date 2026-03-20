@@ -47,6 +47,10 @@ def _read_json(path: Path) -> dict[str, Any]:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
+def _clean_name(value: Any) -> str:
+    return str(value).strip()
+
+
 def _all_suspects(events: list[dict[str, Any]]) -> list[str]:
     seen: set[str] = set()
     for ev in events:
@@ -57,60 +61,141 @@ def _all_suspects(events: list[dict[str, Any]]) -> list[str]:
             "eliminated_suspects_after_chunk",
         ):
             for name in ev.get(key) or []:
-                clean = str(name).strip()
+                clean = _clean_name(name)
                 if clean:
                     seen.add(clean)
     return sorted(seen)
 
 
+def _chunk_sets(events: list[dict[str, Any]], key: str) -> list[set[str]]:
+    return [{_clean_name(name) for name in (ev.get(key) or []) if _clean_name(name)} for ev in events]
+
+
+def _suspect_sort_key(
+    suspect: str,
+    first_seen_at: dict[str, int],
+    final_active: set[str],
+) -> tuple[int, int, str]:
+    return (
+        0 if suspect in final_active else 1,
+        first_seen_at.get(suspect, 10**9),
+        suspect.lower(),
+    )
+
+
+def _ordered_suspects(events: list[dict[str, Any]]) -> list[str]:
+    suspects = _all_suspects(events)
+    active_by_chunk = _chunk_sets(events, "active_suspects_after_chunk")
+    eliminated_by_chunk = _chunk_sets(events, "eliminated_suspects_after_chunk")
+    introduced_by_chunk = _chunk_sets(events, "introduced")
+
+    first_seen_at: dict[str, int] = {}
+    for idx, names in enumerate(introduced_by_chunk):
+        for name in names:
+            first_seen_at.setdefault(name, idx)
+    for idx, names in enumerate(active_by_chunk):
+        for name in names:
+            first_seen_at.setdefault(name, idx)
+    for idx, names in enumerate(eliminated_by_chunk):
+        for name in names:
+            first_seen_at.setdefault(name, idx)
+
+    final_active = active_by_chunk[-1] if active_by_chunk else set()
+    return sorted(suspects, key=lambda suspect: _suspect_sort_key(suspect, first_seen_at, final_active))
+
+
 def _state_matrix(events: list[dict[str, Any]], suspects: list[str]) -> list[list[str]]:
     """Return rows per suspect and columns per chunk with state labels."""
     rows: list[list[str]] = []
+    active_by_chunk = _chunk_sets(events, "active_suspects_after_chunk")
+    eliminated_by_chunk = _chunk_sets(events, "eliminated_suspects_after_chunk")
+    introduced_by_chunk = _chunk_sets(events, "introduced")
+
+    first_seen_at: dict[str, int] = {}
+    for idx, names in enumerate(introduced_by_chunk):
+        for name in names:
+            first_seen_at.setdefault(name, idx)
+    for idx, names in enumerate(active_by_chunk):
+        for name in names:
+            first_seen_at.setdefault(name, idx)
+    for idx, names in enumerate(eliminated_by_chunk):
+        for name in names:
+            first_seen_at.setdefault(name, idx)
+
     for suspect in suspects:
         row: list[str] = []
-        for ev in events:
-            active = set(str(x).strip() for x in (ev.get("active_suspects_after_chunk") or []))
-            eliminated = set(
-                str(x).strip() for x in (ev.get("eliminated_suspects_after_chunk") or [])
-            )
+        introduced_at = first_seen_at.get(suspect)
+        for idx, ev in enumerate(events):
+            active = active_by_chunk[idx]
+            eliminated = eliminated_by_chunk[idx]
             if suspect in active:
                 row.append("active")
             elif suspect in eliminated:
                 row.append("eliminated")
+            elif introduced_at is None or idx < introduced_at:
+                row.append("not-introduced")
             else:
-                row.append("none")
+                row.append("inactive")
         rows.append(row)
     return rows
+
+
+def _evidence_lookup(events: list[dict[str, Any]]) -> dict[tuple[int, str], set[str]]:
+    lookup: dict[tuple[int, str], set[str]] = {}
+    for idx, ev in enumerate(events):
+        for item in ev.get("evidence") or []:
+            if not isinstance(item, dict):
+                continue
+            character = _clean_name(item.get("character", ""))
+            evidence_type = _clean_name(item.get("type", "")).lower()
+            if not character or evidence_type not in {"implicates", "clears"}:
+                continue
+            lookup.setdefault((idx, character), set()).add(evidence_type)
+    return lookup
 
 
 def _render_episode(payload: dict[str, Any]) -> str:
     episode_id = str(payload.get("episode_id", "unknown-episode"))
     events = [e for e in (payload.get("events") or []) if isinstance(e, dict)]
-    suspects = _all_suspects(events)
+    suspects = _ordered_suspects(events)
     matrix = _state_matrix(events, suspects)
+    evidence_lookup = _evidence_lookup(events)
     chunks = len(events)
 
-    cell_w = 22
-    cell_h = 22
+    cell_w = 26
+    cell_h = 24
     left_pad = 260
-    top_pad = 70
+    top_pad = 82
     width = left_pad + (chunks * cell_w) + 40
-    height = top_pad + (max(1, len(suspects)) * cell_h) + 70
+    height = top_pad + (max(1, len(suspects)) * cell_h) + 78
 
     svg_parts: list[str] = [
         f'<svg viewBox="0 0 {width} {height}" width="100%" role="img" '
         f'aria-label="Suspect timeline for {html.escape(episode_id)}">'
     ]
 
+    svg_parts.append(
+        f'<text x="{left_pad}" y="22" font-size="14" font-weight="700" fill="#183642">'
+        "Suspicion State Heatmap</text>"
+    )
+    svg_parts.append(
+        f'<text x="{left_pad}" y="42" font-size="11" fill="#61717f">'
+        "Markers show whether a chunk implicates or clears a suspect.</text>"
+    )
+
     # Chunk labels
     for i in range(chunks):
         x = left_pad + i * cell_w + (cell_w / 2)
-        if i % 5 == 0:
+        if chunks <= 12 or i % 2 == 0:
             svg_parts.append(
                 f'<text x="{x}" y="{top_pad - 14}" text-anchor="middle" '
                 'font-size="10" fill="#335">c'
                 f"{i}</text>"
             )
+        svg_parts.append(
+            f'<line x1="{x}" y1="{top_pad - 8}" x2="{x}" y2="{top_pad - 2}" '
+            'stroke="#b7c4cf" stroke-width="1" />'
+        )
 
     # Suspect labels and cells
     for r, suspect in enumerate(suspects):
@@ -122,18 +207,35 @@ def _render_episode(payload: dict[str, Any]) -> str:
             f"{safe_name}</text>"
         )
         for c in range(chunks):
-            state = matrix[r][c] if r < len(matrix) else "none"
+            state = matrix[r][c] if r < len(matrix) else "not-introduced"
             x = left_pad + c * cell_w
             if state == "active":
                 fill = "#2f80ed"
             elif state == "eliminated":
-                fill = "#9aa5b1"
+                fill = "#94a3b8"
+            elif state == "inactive":
+                fill = "#dde6ec"
             else:
-                fill = "#f0f3f6"
+                fill = "#f8fafc"
             svg_parts.append(
                 f'<rect x="{x}" y="{y}" width="{cell_w - 2}" height="{cell_h - 2}" '
-                f'fill="{fill}" stroke="#d6dbe1" />'
+                f'rx="4" fill="{fill}" stroke="#d6dbe1" />'
             )
+            markers = evidence_lookup.get((c, suspect), set())
+            if "implicates" in markers:
+                svg_parts.append(
+                    f'<circle cx="{x + 8}" cy="{y + 8}" r="4.2" fill="#c96d1a" '
+                    'stroke="#fff7ed" stroke-width="1.2" />'
+                )
+            if "clears" in markers:
+                svg_parts.append(
+                    f'<circle cx="{x + cell_w - 10}" cy="{y + 8}" r="4.2" fill="#ffffff" '
+                    'stroke="#157f6b" stroke-width="2" />'
+                )
+                svg_parts.append(
+                    f'<line x1="{x + cell_w - 13}" y1="{y + 8}" '
+                    f'x2="{x + cell_w - 7}" y2="{y + 8}" stroke="#157f6b" stroke-width="1.5" />'
+                )
 
     svg_parts.append("</svg>")
     chart_svg = "\n".join(svg_parts)
@@ -173,7 +275,11 @@ def _render_episode(payload: dict[str, Any]) -> str:
       --card: #ffffff;
       --line: #d7dde4;
       --active: #2f80ed;
-      --eliminated: #9aa5b1;
+      --eliminated: #94a3b8;
+      --inactive: #dde6ec;
+      --not-introduced: #f8fafc;
+      --implicates: #c96d1a;
+      --clears: #157f6b;
     }}
     body {{
       margin: 0;
@@ -205,6 +311,7 @@ def _render_episode(payload: dict[str, Any]) -> str:
     }}
     .legend {{
       display: flex;
+      flex-wrap: wrap;
       gap: 14px;
       margin: 8px 0 14px;
       font-size: 13px;
@@ -217,6 +324,21 @@ def _render_episode(payload: dict[str, Any]) -> str:
       border: 1px solid var(--line);
       margin-right: 6px;
       vertical-align: -2px;
+      border-radius: 4px;
+    }}
+    .marker {{
+      display: inline-block;
+      width: 12px;
+      height: 12px;
+      border-radius: 999px;
+      margin-right: 6px;
+      vertical-align: -1px;
+    }}
+    .marker-clears {{
+      width: 10px;
+      height: 10px;
+      border: 2px solid var(--clears);
+      background: transparent;
     }}
     table {{
       width: 100%;
@@ -242,9 +364,12 @@ def _render_episode(payload: dict[str, Any]) -> str:
     <p class="meta">Chunks: {chunks} | Suspects observed: {len(suspects)}</p>
     <div class="card">
       <div class="legend">
+        <span><span class="swatch" style="background:var(--not-introduced)"></span>not introduced</span>
         <span><span class="swatch" style="background:var(--active)"></span>active</span>
         <span><span class="swatch" style="background:var(--eliminated)"></span>eliminated</span>
-        <span><span class="swatch" style="background:#f0f3f6"></span>no state</span>
+        <span><span class="swatch" style="background:var(--inactive)"></span>inactive after introduction</span>
+        <span><span class="marker" style="background:var(--implicates)"></span>implicates</span>
+        <span><span class="marker marker-clears"></span>clears</span>
       </div>
       {chart_svg}
     </div>
