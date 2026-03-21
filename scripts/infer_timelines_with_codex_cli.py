@@ -88,6 +88,17 @@ def parse_args() -> argparse.Namespace:
         help="Optional cap on chunks processed per episode (for quick experiments).",
     )
     parser.add_argument(
+        "--context-window",
+        type=int,
+        default=5,
+        help=(
+            "Number of recent chunks to include as raw transcript context "
+            "in each prompt (default: 5). Earlier chunks are represented "
+            "only by the structured prior state summary. Use 0 for full "
+            "cumulative context (all prior chunks)."
+        ),
+    )
+    parser.add_argument(
         "--retries",
         type=int,
         default=2,
@@ -159,7 +170,7 @@ def _build_prompt(
     *,
     episode_id: str,
     chunk_index: int,
-    cumulative_text: str,
+    context_text: str,
     current_chunk_text: str,
     active_suspects: list[str],
     eliminated_suspects: list[str],
@@ -173,8 +184,8 @@ def _build_prompt(
     return (
         f"{SYSTEM_PROMPT}\n\n"
         f"Prior state:\n{json.dumps(state, ensure_ascii=False, indent=2)}\n\n"
-        "Transcript so far (chunks 0..current):\n"
-        f"{cumulative_text}\n\n"
+        "Recent transcript context:\n"
+        f"{context_text}\n\n"
         "Current chunk text:\n"
         f"{current_chunk_text}\n"
     )
@@ -227,15 +238,20 @@ def _build_timeline(chunks_payload: dict[str, Any], args: argparse.Namespace) ->
 
     chunk_events: list[dict[str, Any]] = []
     cumulative_parts: list[str] = []
+    window_size = getattr(args, "context_window", 0)
     for chunk in chunks:
         cumulative_parts.append(f"[Chunk {chunk.index}]\n{chunk.text}")
-        cumulative_text = "\n\n".join(cumulative_parts)
+        if window_size > 0:
+            window = cumulative_parts[-window_size:]
+        else:
+            window = cumulative_parts
+        context_text = "\n\n".join(window)
         active_now = sorted(s.name for s in tracker.active_suspects)
         eliminated_now = sorted(s.name for s in tracker.eliminated_suspects)
         prompt = _build_prompt(
             episode_id=episode_id,
             chunk_index=chunk.index,
-            cumulative_text=cumulative_text,
+            context_text=context_text,
             current_chunk_text=chunk.text,
             active_suspects=active_now,
             eliminated_suspects=eliminated_now,
