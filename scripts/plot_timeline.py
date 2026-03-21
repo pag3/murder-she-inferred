@@ -154,6 +154,19 @@ def _evidence_lookup(events: list[dict[str, Any]]) -> dict[tuple[int, str], set[
     return lookup
 
 
+def _find_reveal(events: list[dict[str, Any]]) -> dict[str, Any] | None:
+    """Find the chunk where suspects narrow to exactly one (the reveal).
+
+    Returns a dict with 'chunk_index' and 'culprit', or None if no clear
+    reveal is found (e.g. multiple suspects remain at the end).
+    """
+    for ev in reversed(events):
+        active = [_clean_name(n) for n in (ev.get("active_suspects_after_chunk") or []) if _clean_name(n)]
+        if len(active) == 1:
+            return {"chunk_index": int(ev.get("chunk_index", len(events) - 1)), "culprit": active[0]}
+    return None
+
+
 def _evidence_groups(events: list[dict[str, Any]]) -> list[dict[str, Any]]:
     groups: list[dict[str, Any]] = []
     for ev in events:
@@ -281,6 +294,7 @@ def _render_heatmap_episode(payload: dict[str, Any], evidence_href: str) -> str:
     suspects = _ordered_suspects(events)
     matrix = _state_matrix(events, suspects)
     evidence_lookup = _evidence_lookup(events)
+    reveal = _find_reveal(events)
     chunks = len(events)
 
     cell_w = 26
@@ -294,6 +308,15 @@ def _render_heatmap_episode(payload: dict[str, Any], evidence_href: str) -> str:
         f'<svg viewBox="0 0 {width} {height}" width="100%" role="img" '
         f'aria-label="Suspect timeline for {html.escape(episode_id)}">'
     ]
+
+    # Reveal column highlight
+    if reveal is not None:
+        reveal_x = left_pad + reveal["chunk_index"] * cell_w - 2
+        reveal_h = max(1, len(suspects)) * cell_h + 4
+        svg_parts.append(
+            f'<rect x="{reveal_x}" y="{top_pad - 4}" width="{cell_w + 4}" height="{reveal_h}" '
+            'rx="6" fill="#fef3c7" stroke="#f59e0b" stroke-width="1.5" opacity="0.6" />'
+        )
 
     svg_parts.append(
         f'<text x="{left_pad}" y="22" font-size="14" font-weight="700" fill="#183642">'
@@ -382,6 +405,18 @@ def _render_heatmap_episode(payload: dict[str, Any], evidence_href: str) -> str:
             "</tr>"
         )
 
+    reveal_html = ""
+    if reveal is not None:
+        reveal_html = (
+            '<div class="card reveal-card" style="margin-top:14px">'
+            '<div style="display:flex;align-items:center;gap:12px">'
+            '<span style="font-size:28px">&#9733;</span>'
+            '<div>'
+            f'<strong style="font-size:16px;color:#b45309">The culprit: {html.escape(reveal["culprit"])}</strong>'
+            f'<p style="margin:4px 0 0;color:var(--muted);font-size:13px">Revealed at chunk {reveal["chunk_index"]}</p>'
+            "</div></div></div>"
+        )
+
     body = f"""
     <h1>{html.escape(episode_id)}</h1>
     <div class="nav">
@@ -400,6 +435,7 @@ def _render_heatmap_episode(payload: dict[str, Any], evidence_href: str) -> str:
       </div>
       {chart_svg}
     </div>
+    {reveal_html}
     <div class="card" style="margin-top:14px">
       <strong>Chunk Events</strong>
       <table>
@@ -450,6 +486,11 @@ def _render_heatmap_episode(payload: dict[str, Any], evidence_href: str) -> str:
       border: 2px solid var(--clears);
       background: transparent;
     }
+    .reveal-card {
+      margin-top: 14px;
+      background: linear-gradient(135deg, #fffbeb, #fef3c7);
+      border: 1.5px solid #f59e0b;
+    }
 """
     return _page_chrome(f"{episode_id} Timeline", body, extra_styles)
 
@@ -457,6 +498,7 @@ def _render_heatmap_episode(payload: dict[str, Any], evidence_href: str) -> str:
 def _render_evidence_ladder_episode(payload: dict[str, Any], heatmap_href: str) -> str:
     episode_id = str(payload.get("episode_id", "unknown-episode"))
     events = [e for e in (payload.get("events") or []) if isinstance(e, dict)]
+    reveal = _find_reveal(events)
     groups = _evidence_groups(events)
     total_notes = sum(len(group["notes"]) for group in groups)
     implicates = sum(
@@ -531,8 +573,25 @@ def _render_evidence_ladder_episode(payload: dict[str, Any], heatmap_href: str) 
     <div class="ladder">
       {ladder_body}
     </div>
+    {"" if reveal is None else (
+        '<div class="card reveal-card">'
+        '<div style="display:flex;align-items:center;gap:14px">'
+        '<span style="font-size:32px">&#9733;</span>'
+        '<div>'
+        '<strong style="font-size:18px;color:#b45309">The culprit: '
+        + html.escape(reveal["culprit"])
+        + '</strong>'
+        '<p style="margin:4px 0 0;color:var(--muted);font-size:13px">Identified at chunk '
+        + str(reveal["chunk_index"])
+        + '</p></div></div></div>'
+    )}
 """
     extra_styles = """
+    .reveal-card {
+      margin-top: 20px;
+      background: linear-gradient(135deg, #fffbeb, #fef3c7);
+      border: 1.5px solid #f59e0b;
+    }
     .summary-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
