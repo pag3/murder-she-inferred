@@ -23,7 +23,8 @@ Schema:
   "eliminated": ["name", ...],
   "evidence": [
     {"type":"implicates|clears","character":"name","note":"short note"}
-  ]
+  ],
+  "suspicion_scores": {"name": 0-100, ...}
 }
 Rules:
 - Use only the provided cumulative transcript context and prior state.
@@ -37,7 +38,15 @@ Rules:
 - Do not leave a self-defender, accident victim, or suicide victim active as the murderer once the transcript clarifies what really happened.
 - When two different crimes are disentangled late in the episode, keep active only the people still plausibly responsible for intentional wrongdoing that Jessica is exposing in the current reveal.
 - Public accusations/arrests are weak evidence by default unless corroborated by concrete clues.
-- If nothing changes, return empty lists.
+- If nothing changes, return empty lists and keep suspicion_scores the same as before.
+
+Suspicion scores:
+- "suspicion_scores" maps each currently active suspect name to an integer 0-100.
+- Scores represent relative suspicion and should sum to approximately 100.
+- Higher score = more suspicious based on all evidence so far.
+- Eliminated suspects should not appear in suspicion_scores.
+- Newly introduced suspects must be included in suspicion_scores.
+- When a suspect is eliminated, redistribute their share among the remaining active suspects.
 """
 
 
@@ -159,10 +168,23 @@ def _normalize_result(payload: dict[str, Any]) -> dict[str, Any]:
         note = str(item.get("note", "")).strip()
         clean_evidence.append({"type": ev_type, "character": character, "note": note})
 
+    raw_scores = payload.get("suspicion_scores", {})
+    clean_scores: dict[str, int] = {}
+    if isinstance(raw_scores, dict):
+        for name, score in raw_scores.items():
+            name = str(name).strip()
+            if not name:
+                continue
+            try:
+                clean_scores[name] = max(0, min(100, int(score)))
+            except (TypeError, ValueError):
+                continue
+
     return {
         "introduced": [str(x).strip() for x in introduced if str(x).strip()],
         "eliminated": [str(x).strip() for x in eliminated if str(x).strip()],
         "evidence": clean_evidence,
+        "suspicion_scores": clean_scores,
     }
 
 
@@ -174,13 +196,16 @@ def _build_prompt(
     current_chunk_text: str,
     active_suspects: list[str],
     eliminated_suspects: list[str],
+    prior_scores: dict[str, int] | None = None,
 ) -> str:
-    state = {
+    state: dict[str, Any] = {
         "episode_id": episode_id,
         "chunk_index": chunk_index,
         "active_suspects": active_suspects,
         "eliminated_suspects": eliminated_suspects,
     }
+    if prior_scores:
+        state["prior_suspicion_scores"] = prior_scores
     return (
         f"{SYSTEM_PROMPT}\n\n"
         f"Prior state:\n{json.dumps(state, ensure_ascii=False, indent=2)}\n\n"
@@ -239,6 +264,7 @@ def _build_timeline(chunks_payload: dict[str, Any], args: argparse.Namespace) ->
     chunk_events: list[dict[str, Any]] = []
     cumulative_parts: list[str] = []
     window_size = getattr(args, "context_window", 0)
+    prior_scores: dict[str, int] = {}
     for chunk in chunks:
         cumulative_parts.append(f"[Chunk {chunk.index}]\n{chunk.text}")
         if window_size > 0:
@@ -255,6 +281,7 @@ def _build_timeline(chunks_payload: dict[str, Any], args: argparse.Namespace) ->
             current_chunk_text=chunk.text,
             active_suspects=active_now,
             eliminated_suspects=eliminated_now,
+            prior_scores=prior_scores if prior_scores else None,
         )
 
         result: dict[str, Any] | None = None
@@ -269,7 +296,7 @@ def _build_timeline(chunks_payload: dict[str, Any], args: argparse.Namespace) ->
                 result = None
 
         if result is None:
-            result = {"introduced": [], "eliminated": [], "evidence": []}
+            result = {"introduced": [], "eliminated": [], "evidence": [], "suspicion_scores": {}}
 
         for name in result["introduced"]:
             tracker.introduce_suspect(name, chunk.index)
@@ -290,6 +317,8 @@ def _build_timeline(chunks_payload: dict[str, Any], args: argparse.Namespace) ->
             else:
                 tracker.clear(ev["character"], chunk.index, note=ev["note"])
 
+        prior_scores = result.get("suspicion_scores", {})
+
         state_after = tracker.get_state_at(chunk.index)
         chunk_events.append(
             {
@@ -297,6 +326,7 @@ def _build_timeline(chunks_payload: dict[str, Any], args: argparse.Namespace) ->
                 "introduced": result["introduced"],
                 "eliminated": result["eliminated"],
                 "evidence": result["evidence"],
+                "suspicion_scores": result.get("suspicion_scores", {}),
                 "active_suspects_after_chunk": sorted(
                     [name for name, st in state_after.items() if st == SuspectState.ACTIVE]
                 ),
