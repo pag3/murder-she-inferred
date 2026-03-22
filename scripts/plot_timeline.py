@@ -628,6 +628,150 @@ def _render_evidence_ladder_episode(payload: dict[str, Any], heatmap_href: str) 
     return _page_chrome(f"{episode_id} Evidence Ladder", body, extra_styles)
 
 
+def _render_bracket_episode(payload: dict[str, Any], heatmap_href: str) -> str:
+    episode_id = str(payload.get("episode_id", "unknown-episode"))
+    events = [e for e in (payload.get("events") or []) if isinstance(e, dict)]
+    suspects = _all_suspects(events)
+    chunks = len(events)
+    if not suspects or not chunks:
+        body = f"""
+    <h1>{html.escape(episode_id)}</h1>
+    <div class="nav"><a href="index.html">Index</a></div>
+    <div class="card"><p style="color: var(--muted); padding: 20px;">No suspect data available.</p></div>
+"""
+        return _page_chrome(f"{episode_id} Elimination Bracket", body)
+
+    introduced_by_chunk = _chunk_sets(events, "introduced")
+    active_by_chunk = _chunk_sets(events, "active_suspects_after_chunk")
+    eliminated_by_chunk = _chunk_sets(events, "eliminated_suspects_after_chunk")
+
+    # Build per-suspect lifespan: (introduced_at, eliminated_at or last_chunk)
+    first_seen: dict[str, int] = {}
+    for idx, names in enumerate(introduced_by_chunk):
+        for n in names:
+            first_seen.setdefault(n, idx)
+    for idx, names in enumerate(active_by_chunk):
+        for n in names:
+            first_seen.setdefault(n, idx)
+    for idx, names in enumerate(eliminated_by_chunk):
+        for n in names:
+            first_seen.setdefault(n, idx)
+
+    last_active: dict[str, int] = {}
+    for idx, actives in enumerate(active_by_chunk):
+        for n in actives:
+            last_active[n] = idx
+
+    final_active = active_by_chunk[-1] if active_by_chunk else set()
+
+    # Sort: culprit (final active) last (at bottom), then by elimination order (late eliminators near bottom)
+    def bracket_sort_key(s: str) -> tuple[int, int, str]:
+        if s in final_active:
+            return (1, 0, s.lower())
+        return (0, last_active.get(s, 0), s.lower())
+
+    sorted_suspects = sorted(suspects, key=bracket_sort_key)
+
+    # SVG rendering
+    row_h = 36
+    left_pad = 200
+    right_pad = 80
+    top_pad = 60
+    bar_area_w = max(400, chunks * 40)
+    svg_w = left_pad + bar_area_w + right_pad
+    svg_h = top_pad + len(sorted_suspects) * row_h + 40
+
+    svg_parts: list[str] = [
+        f'<svg viewBox="0 0 {svg_w} {svg_h}" width="100%" role="img" '
+        f'aria-label="Elimination bracket for {html.escape(episode_id)}">'
+    ]
+
+    svg_parts.append(
+        f'<text x="{left_pad}" y="24" font-size="14" font-weight="700" fill="#183642">'
+        "Elimination Bracket</text>"
+    )
+    svg_parts.append(
+        f'<text x="{left_pad}" y="42" font-size="11" fill="#61717f">'
+        f"{len(suspects)} suspects narrowed across {chunks} chunks</text>"
+    )
+
+    # Chunk grid lines
+    for i in range(chunks):
+        x = left_pad + (i / max(1, chunks - 1)) * bar_area_w if chunks > 1 else left_pad
+        svg_parts.append(
+            f'<line x1="{x}" y1="{top_pad - 6}" x2="{x}" y2="{top_pad + len(sorted_suspects) * row_h}" '
+            'stroke="#edf0f3" stroke-width="1" />'
+        )
+        if chunks <= 20 or i % 2 == 0:
+            svg_parts.append(
+                f'<text x="{x}" y="{top_pad - 10}" text-anchor="middle" '
+                f'font-size="9" fill="#94a3b8">c{i}</text>'
+            )
+
+    # Draw bars
+    for r, suspect in enumerate(sorted_suspects):
+        y = top_pad + r * row_h
+        is_survivor = suspect in final_active
+        start_chunk = first_seen.get(suspect, 0)
+        end_chunk = last_active.get(suspect, start_chunk)
+
+        x_start = left_pad + (start_chunk / max(1, chunks - 1)) * bar_area_w if chunks > 1 else left_pad
+        x_end = left_pad + (end_chunk / max(1, chunks - 1)) * bar_area_w if chunks > 1 else left_pad
+
+        bar_w = max(8, x_end - x_start + 8)
+
+        if is_survivor:
+            fill = "#2f80ed"
+            stroke = "#1a5cbf"
+            # Extend to the right edge
+            bar_w = left_pad + bar_area_w - x_start
+        else:
+            fill = "#94a3b8"
+            stroke = "#7a8a98"
+
+        # Suspect name
+        svg_parts.append(
+            f'<text x="{left_pad - 10}" y="{y + 20}" text-anchor="end" '
+            f'font-size="12" fill="#122025">{html.escape(suspect)}</text>'
+        )
+
+        # Bar
+        svg_parts.append(
+            f'<rect x="{x_start}" y="{y + 6}" width="{bar_w}" height="{row_h - 14}" '
+            f'rx="4" fill="{fill}" stroke="{stroke}" stroke-width="0.5" opacity="0.85" />'
+        )
+
+        # Elimination marker (X)
+        if not is_survivor and end_chunk < chunks - 1:
+            svg_parts.append(
+                f'<text x="{x_start + bar_w + 6}" y="{y + 22}" '
+                f'font-size="11" fill="#94a3b8" font-weight="600">c{end_chunk}</text>'
+            )
+
+        # Culprit marker
+        if is_survivor:
+            svg_parts.append(
+                f'<text x="{x_start + bar_w + 6}" y="{y + 22}" '
+                f'font-size="11" fill="#2f80ed" font-weight="700">&#9733;</text>'
+            )
+
+    svg_parts.append("</svg>")
+    chart_svg = "\n".join(svg_parts)
+
+    body = f"""
+    <h1>{html.escape(episode_id)}</h1>
+    <p class="meta">Elimination bracket &middot; {len(suspects)} suspects &middot; {chunks} chunks</p>
+    <div class="nav">
+      <a href="{html.escape(heatmap_href)}">Heatmap</a>
+      <a href="index.html">Index</a>
+    </div>
+    <div class="card" style="overflow-x: auto;">
+      {chart_svg}
+    </div>
+"""
+    return _page_chrome(f"{episode_id} Elimination Bracket", body)
+
+
 _RACE_COLORS = [
     "#2f80ed", "#e74c3c", "#27ae60", "#f39c12", "#8e44ad",
     "#16a085", "#d35400", "#2c3e50", "#c0392b", "#1abc9c",
@@ -792,6 +936,7 @@ def _render_index(entries: list[dict[str, str]]) -> str:
             f"<td>{html.escape(entry['episode_id'])}</td>"
             f'<td><a href="{html.escape(entry["heatmap_href"])}">Heatmap</a></td>'
             f'<td><a href="{html.escape(entry["evidence_href"])}">Evidence Ladder</a></td>'
+            f'<td><a href="{html.escape(entry["bracket_href"])}">Bracket</a></td>'
             f"{race_cell}"
             "</tr>"
         )
@@ -805,6 +950,7 @@ def _render_index(entries: list[dict[str, str]]) -> str:
             <th>episode</th>
             <th>heatmap</th>
             <th>evidence ladder</th>
+            <th>bracket</th>
             <th>suspicion race</th>
           </tr>
         </thead>
@@ -846,6 +992,7 @@ def main() -> int:
         stem = path.stem.replace(".timeline", "")
         heatmap_name = f"{stem}.timeline.html"
         evidence_name = f"{stem}.evidence.html"
+        bracket_name = f"{stem}.bracket.html"
         race_name = f"{stem}.race.html"
         (output_dir / heatmap_name).write_text(
             _render_heatmap_episode(payload, evidence_name),
@@ -855,15 +1002,20 @@ def main() -> int:
             _render_evidence_ladder_episode(payload, heatmap_name),
             encoding="utf-8",
         )
+        (output_dir / bracket_name).write_text(
+            _render_bracket_episode(payload, heatmap_name),
+            encoding="utf-8",
+        )
         (output_dir / race_name).write_text(
             _render_race_chart_episode(payload, heatmap_name),
             encoding="utf-8",
         )
-        rendered += 3
+        rendered += 4
         entry: dict[str, str] = {
             "episode_id": episode_id,
             "heatmap_href": heatmap_name,
             "evidence_href": evidence_name,
+            "bracket_href": bracket_name,
         }
         events = payload.get("events") or []
         if _has_suspicion_scores(events):
