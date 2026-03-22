@@ -43,7 +43,10 @@ _BOILERPLATE_FOOTER_RE = re.compile(
 )
 
 # Default target chunk size in characters for fixed-mode splitting.
-DEFAULT_CHUNK_SIZE = 2000
+DEFAULT_CHUNK_SIZE = 1400
+
+# Chunks shorter than this are merged into their neighbor.
+MIN_CHUNK_SIZE = 200
 
 
 def load_transcript(path: str | Path) -> str:
@@ -99,6 +102,7 @@ def split_into_chunks(
         segments = _split_scenes(text)
     elif mode == "fixed":
         segments = _split_fixed(text, chunk_size)
+        segments = _merge_runts(segments, MIN_CHUNK_SIZE)
     else:
         raise ValueError(
             f"Unknown chunk mode: {mode!r}. "
@@ -209,6 +213,31 @@ def _split_fixed(text: str, target_size: int) -> list[str]:
             start += 1
 
     return chunks
+
+
+def _merge_runts(segments: list[str], min_size: int) -> list[str]:
+    """Merge segments shorter than *min_size* into their nearest neighbor.
+
+    Short trailing segments are appended to the previous segment.
+    Short leading segments are prepended to the next segment.
+    """
+    if len(segments) <= 1:
+        return segments
+
+    merged: list[str] = []
+    for seg in segments:
+        if merged and len(seg) < min_size:
+            # Append runt to previous segment.
+            merged[-1] = merged[-1] + "\n\n" + seg
+        else:
+            merged.append(seg)
+
+    # If the first segment is still a runt and there's a next one, merge forward.
+    if len(merged) > 1 and len(merged[0]) < min_size:
+        merged[1] = merged[0] + "\n\n" + merged[1]
+        merged.pop(0)
+
+    return merged
 
 
 def _is_trivial_preamble(text: str) -> bool:

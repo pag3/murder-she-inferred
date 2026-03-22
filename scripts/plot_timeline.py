@@ -772,15 +772,172 @@ def _render_bracket_episode(payload: dict[str, Any], heatmap_href: str) -> str:
     return _page_chrome(f"{episode_id} Elimination Bracket", body)
 
 
+_RACE_COLORS = [
+    "#2f80ed", "#e74c3c", "#27ae60", "#f39c12", "#8e44ad",
+    "#16a085", "#d35400", "#2c3e50", "#c0392b", "#1abc9c",
+    "#e67e22", "#3498db", "#9b59b6", "#2ecc71", "#e84393",
+]
+
+
+def _has_suspicion_scores(events: list[dict[str, Any]]) -> bool:
+    return any(ev.get("suspicion_scores") for ev in events if isinstance(ev, dict))
+
+
+def _render_race_chart_episode(payload: dict[str, Any], heatmap_href: str) -> str:
+    episode_id = str(payload.get("episode_id", "unknown-episode"))
+    events = [e for e in (payload.get("events") or []) if isinstance(e, dict)]
+
+    if not _has_suspicion_scores(events):
+        body = f"""
+    <h1>{html.escape(episode_id)}</h1>
+    <div class="nav">
+      <a href="{html.escape(heatmap_href)}">Heatmap</a>
+      <a href="index.html">Index</a>
+    </div>
+    <div class="card">
+      <p style="color: var(--muted); padding: 20px;">No suspicion scores available for this episode. Re-run inference with suspicion score support to generate this chart.</p>
+    </div>
+"""
+        return _page_chrome(f"{episode_id} Suspicion Race", body)
+
+    suspects = _ordered_suspects(events)
+    chunks = len(events)
+
+    # Build score series per suspect
+    score_series: dict[str, list[int | None]] = {s: [] for s in suspects}
+    for ev in events:
+        scores = ev.get("suspicion_scores", {}) or {}
+        active_after = set(ev.get("active_suspects_after_chunk", []))
+        for s in suspects:
+            if s in scores:
+                score_series[s].append(int(scores[s]))
+            elif s in active_after:
+                score_series[s].append(0)
+            else:
+                score_series[s].append(None)
+
+    # SVG dimensions
+    chart_w = max(600, chunks * 50)
+    chart_h = 320
+    left_pad = 50
+    right_pad = 180
+    top_pad = 50
+    bottom_pad = 40
+    svg_w = left_pad + chart_w + right_pad
+    svg_h = top_pad + chart_h + bottom_pad
+
+    svg_parts: list[str] = [
+        f'<svg viewBox="0 0 {svg_w} {svg_h}" width="100%" role="img" '
+        f'aria-label="Suspicion race chart for {html.escape(episode_id)}">'
+    ]
+
+    # Title
+    svg_parts.append(
+        f'<text x="{left_pad}" y="28" font-size="14" font-weight="700" fill="#183642">'
+        "Suspicion Race</text>"
+    )
+
+    # Grid lines and Y-axis labels
+    for pct in (0, 25, 50, 75, 100):
+        y = top_pad + chart_h - (pct / 100 * chart_h)
+        svg_parts.append(
+            f'<line x1="{left_pad}" y1="{y}" x2="{left_pad + chart_w}" y2="{y}" '
+            'stroke="#e2e8f0" stroke-width="1" />'
+        )
+        svg_parts.append(
+            f'<text x="{left_pad - 8}" y="{y + 4}" text-anchor="end" '
+            f'font-size="10" fill="#94a3b8">{pct}</text>'
+        )
+
+    # X-axis labels
+    for i in range(chunks):
+        x = left_pad + (i / max(1, chunks - 1)) * chart_w if chunks > 1 else left_pad
+        if chunks <= 20 or i % 2 == 0:
+            svg_parts.append(
+                f'<text x="{x}" y="{top_pad + chart_h + 18}" text-anchor="middle" '
+                f'font-size="10" fill="#94a3b8">c{i}</text>'
+            )
+
+    # Plot lines
+    color_map: dict[str, str] = {}
+    for idx, suspect in enumerate(suspects):
+        color_map[suspect] = _RACE_COLORS[idx % len(_RACE_COLORS)]
+
+    for suspect in suspects:
+        series = score_series[suspect]
+        color = color_map[suspect]
+        points: list[str] = []
+        for i, val in enumerate(series):
+            if val is None:
+                continue
+            x = left_pad + (i / max(1, chunks - 1)) * chart_w if chunks > 1 else left_pad
+            y = top_pad + chart_h - (val / 100 * chart_h)
+            points.append(f"{x:.1f},{y:.1f}")
+
+        if len(points) >= 2:
+            svg_parts.append(
+                f'<polyline points="{" ".join(points)}" fill="none" '
+                f'stroke="{color}" stroke-width="2.5" stroke-linejoin="round" '
+                f'stroke-linecap="round" />'
+            )
+
+        # Dots at each data point
+        for i, val in enumerate(series):
+            if val is None:
+                continue
+            x = left_pad + (i / max(1, chunks - 1)) * chart_w if chunks > 1 else left_pad
+            y = top_pad + chart_h - (val / 100 * chart_h)
+            svg_parts.append(
+                f'<circle cx="{x:.1f}" cy="{y:.1f}" r="3.5" '
+                f'fill="{color}" stroke="#fff" stroke-width="1.5" />'
+            )
+
+    # Legend (right side)
+    for idx, suspect in enumerate(suspects):
+        color = color_map[suspect]
+        ly = top_pad + 10 + idx * 20
+        svg_parts.append(
+            f'<line x1="{left_pad + chart_w + 14}" y1="{ly}" '
+            f'x2="{left_pad + chart_w + 30}" y2="{ly}" '
+            f'stroke="{color}" stroke-width="2.5" stroke-linecap="round" />'
+        )
+        svg_parts.append(
+            f'<text x="{left_pad + chart_w + 36}" y="{ly + 4}" '
+            f'font-size="11" fill="#183642">{html.escape(suspect)}</text>'
+        )
+
+    svg_parts.append("</svg>")
+    chart_svg = "\n".join(svg_parts)
+
+    body = f"""
+    <h1>{html.escape(episode_id)}</h1>
+    <p class="meta">Suspicion scores across {chunks} chunks &middot; {len(suspects)} suspects</p>
+    <div class="nav">
+      <a href="{html.escape(heatmap_href)}">Heatmap</a>
+      <a href="index.html">Index</a>
+    </div>
+    <div class="card" style="overflow-x: auto;">
+      {chart_svg}
+    </div>
+"""
+    return _page_chrome(f"{episode_id} Suspicion Race", body)
+
+
 def _render_index(entries: list[dict[str, str]]) -> str:
     rows = []
     for entry in entries:
+        race_cell = ""
+        if entry.get("race_href"):
+            race_cell = f'<td><a href="{html.escape(entry["race_href"])}">Suspicion Race</a></td>'
+        else:
+            race_cell = "<td></td>"
         rows.append(
             "<tr>"
             f"<td>{html.escape(entry['episode_id'])}</td>"
             f'<td><a href="{html.escape(entry["heatmap_href"])}">Heatmap</a></td>'
             f'<td><a href="{html.escape(entry["evidence_href"])}">Evidence Ladder</a></td>'
             f'<td><a href="{html.escape(entry["bracket_href"])}">Bracket</a></td>'
+            f"{race_cell}"
             "</tr>"
         )
     body = f"""
@@ -794,6 +951,7 @@ def _render_index(entries: list[dict[str, str]]) -> str:
             <th>heatmap</th>
             <th>evidence ladder</th>
             <th>bracket</th>
+            <th>suspicion race</th>
           </tr>
         </thead>
         <tbody>
@@ -835,6 +993,7 @@ def main() -> int:
         heatmap_name = f"{stem}.timeline.html"
         evidence_name = f"{stem}.evidence.html"
         bracket_name = f"{stem}.bracket.html"
+        race_name = f"{stem}.race.html"
         (output_dir / heatmap_name).write_text(
             _render_heatmap_episode(payload, evidence_name),
             encoding="utf-8",
@@ -847,15 +1006,21 @@ def main() -> int:
             _render_bracket_episode(payload, heatmap_name),
             encoding="utf-8",
         )
-        rendered += 3
-        index_entries.append(
-            {
-                "episode_id": episode_id,
-                "heatmap_href": heatmap_name,
-                "evidence_href": evidence_name,
-                "bracket_href": bracket_name,
-            }
+        (output_dir / race_name).write_text(
+            _render_race_chart_episode(payload, heatmap_name),
+            encoding="utf-8",
         )
+        rendered += 4
+        entry: dict[str, str] = {
+            "episode_id": episode_id,
+            "heatmap_href": heatmap_name,
+            "evidence_href": evidence_name,
+            "bracket_href": bracket_name,
+        }
+        events = payload.get("events") or []
+        if _has_suspicion_scores(events):
+            entry["race_href"] = race_name
+        index_entries.append(entry)
 
     (output_dir / "index.html").write_text(_render_index(index_entries), encoding="utf-8")
     rendered += 1
