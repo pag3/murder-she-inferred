@@ -265,7 +265,9 @@ def _build_timeline(chunks_payload: dict[str, Any], args: argparse.Namespace) ->
     cumulative_parts: list[str] = []
     window_size = getattr(args, "context_window", 0)
     prior_scores: dict[str, int] = {}
+    total_chunks = len(chunks)
     for chunk in chunks:
+        print(f"  chunk {chunk.index + 1}/{total_chunks}", flush=True)
         cumulative_parts.append(f"[Chunk {chunk.index}]\n{chunk.text}")
         if window_size > 0:
             window = cumulative_parts[-window_size:]
@@ -385,7 +387,9 @@ def main() -> int:
         raise FileNotFoundError("No input chunk files found.")
 
     processed = 0
+    total_files = len(files)
     for path in files:
+        print(f"[{processed + 1}/{total_files}] {path.stem}", flush=True)
         payload = json.loads(path.read_text(encoding="utf-8"))
         timeline_payload = _build_timeline(payload, args)
         output_path = output_dir / f"{path.stem.replace('.chunks', '')}.timeline.json"
