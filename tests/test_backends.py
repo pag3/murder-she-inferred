@@ -140,3 +140,59 @@ class TestOpenaiHttpBackend:
         assert body["messages"][0]["role"] == "system"
         assert body["messages"][0]["content"] == SYSTEM_PROMPT
         assert body["messages"][1]["role"] == "user"
+
+    def test_full_inference_loop_with_http_backend(self, monkeypatch):
+        """Feed mock HTTP responses through the full inference loop."""
+        from murder_she_inferred.inference import build_timeline
+
+        call_count = [0]
+
+        canned_responses = [
+            {"introduced": ["Alice"], "eliminated": [], "evidence": [], "suspicion_scores": {"Alice": 100}},
+            {"introduced": [], "eliminated": ["Alice"], "evidence": [{"type": "clears", "character": "Alice", "note": "alibi"}], "suspicion_scores": {}},
+        ]
+
+        class FakeResponse:
+            def __init__(self, content):
+                self._data = json.dumps({
+                    "choices": [{"message": {"content": json.dumps(content)}}]
+                }).encode("utf-8")
+            def read(self):
+                return self._data
+            def __enter__(self):
+                return self
+            def __exit__(self, *args):
+                pass
+
+        def fake_urlopen(req, timeout=None):
+            nonlocal call_count
+            idx = min(call_count[0], len(canned_responses) - 1)
+            call_count[0] += 1
+            return FakeResponse(canned_responses[idx])
+
+        monkeypatch.setattr("murder_she_inferred.backends.urllib.request.urlopen", fake_urlopen)
+
+        from murder_she_inferred.backends import openai_http_backend
+        backend = openai_http_backend(model="test")
+
+        payload = {
+            "episode_id": "test",
+            "chunks": [
+                {"index": 0, "text": "Chunk 0"},
+                {"index": 1, "text": "Chunk 1"},
+            ],
+        }
+
+        result = build_timeline(
+            payload,
+            backend_fn=backend,
+            max_chunks=None,
+            context_window=5,
+            retries=0,
+            sleep_seconds=0.0,
+        )
+
+        assert result["episode_id"] == "test"
+        assert result["chunk_count"] == 2
+        assert len(result["events"]) == 2
+        assert "Alice" in result["final_eliminated_suspects"]
