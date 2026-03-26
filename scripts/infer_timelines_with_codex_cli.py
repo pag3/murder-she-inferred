@@ -5,10 +5,9 @@ from __future__ import annotations
 
 import argparse
 import json
-import shlex
-import subprocess
 from pathlib import Path
 
+from murder_she_inferred.backends import codex_cli_backend
 from murder_she_inferred.inference import build_timeline
 from murder_she_inferred.settings import get_data_dir, run_stage_path
 
@@ -85,34 +84,6 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def _call_codex(command: str, prompt: str) -> str:
-    command = _normalize_codex_command(command)
-    completed = subprocess.run(
-        command,
-        shell=True,
-        input=prompt,
-        text=True,
-        capture_output=True,
-        check=False,
-    )
-    if completed.returncode != 0:
-        raise RuntimeError(
-            f"Codex command failed ({completed.returncode}): {completed.stderr.strip()}"
-        )
-    return completed.stdout
-
-
-def _normalize_codex_command(command: str) -> str:
-    """Ensure Codex command runs in non-interactive mode."""
-    parts = shlex.split(command)
-    if not parts:
-        raise ValueError("codex command is empty")
-    binary = Path(parts[0]).name
-    if binary == "codex" and len(parts) == 1:
-        return f"{command} exec -"
-    return command
-
-
 def main() -> int:
     args = parse_args()
     default_data_dir = get_data_dir(must_exist=False)
@@ -147,8 +118,7 @@ def main() -> int:
         print(f"[{processed + 1}/{total_files}] {path.stem}", flush=True)
         payload = json.loads(path.read_text(encoding="utf-8"))
 
-        def backend_fn(prompt: str) -> str:
-            return _call_codex(args.codex_command, prompt)
+        backend_fn = codex_cli_backend(args.codex_command)
 
         timeline_payload = build_timeline(
             payload,
