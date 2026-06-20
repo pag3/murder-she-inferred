@@ -11,7 +11,8 @@ from pathlib import Path
 SCRIPT_COMMANDS = {
     "run": "run_full_pipeline.py",
     "chunks": "build_episode_timeline_chunks.py",
-    "infer": "infer_timelines_with_codex_cli.py",
+    "infer": "infer_timelines.py",
+    "infer-codex": "infer_timelines_with_codex_cli.py",
     "qc": "qc_timelines.py",
     "plot": "plot_timeline.py",
 }

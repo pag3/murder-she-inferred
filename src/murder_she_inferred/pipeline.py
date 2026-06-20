@@ -19,9 +19,31 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="Numbered run root containing 01-transcripts and downstream stage folders.",
     )
     parser.add_argument(
+        "--backend",
+        choices=["codex-cli", "local"],
+        default="codex-cli",
+        help="Inference backend to use (default: codex-cli).",
+    )
+    parser.add_argument(
         "--codex-command",
         default="codex exec -",
         help='Shell command used to call Codex CLI during inference. Example: "codex exec -"',
+    )
+    parser.add_argument(
+        "--api-url",
+        default="http://localhost:11434/v1/chat/completions",
+        help="URL for the local backend's OpenAI-compatible endpoint (default: Ollama's default).",
+    )
+    parser.add_argument(
+        "--model",
+        default="llama3",
+        help="Model name for the local backend (default: llama3).",
+    )
+    parser.add_argument(
+        "--timeout",
+        type=float,
+        default=None,
+        help="Optional HTTP request timeout in seconds for the local backend.",
     )
     parser.add_argument(
         "--chunk-size",
@@ -78,19 +100,20 @@ def main(argv: list[str] | None = None) -> int:
         build_args.extend(["--chunk-size", str(args.chunk_size)])
     _run_step("build_episode_timeline_chunks.py", build_args)
 
-    infer_args = [
-        "--run-root",
-        run_root,
-        "--codex-command",
-        args.codex_command,
-    ]
+    infer_args = ["--run-root", run_root, "--backend", args.backend]
+    if args.backend == "local":
+        infer_args.extend(["--api-url", args.api_url, "--model", args.model])
+        if args.timeout is not None:
+            infer_args.extend(["--timeout", str(args.timeout)])
+    else:
+        infer_args.extend(["--codex-command", args.codex_command])
     if args.max_chunks is not None:
         infer_args.extend(["--max-chunks", str(args.max_chunks)])
     if args.retries is not None:
         infer_args.extend(["--retries", str(args.retries)])
     if args.sleep_seconds is not None:
         infer_args.extend(["--sleep-seconds", str(args.sleep_seconds)])
-    _run_step("infer_timelines_with_codex_cli.py", infer_args)
+    _run_step("infer_timelines.py", infer_args)
 
     qc_args = ["--run-root", run_root]
     if args.max_error_rate is not None:
