@@ -50,11 +50,11 @@ targets any OpenAI-compatible server (Ollama, llama.cpp, LM Studio, OpenVINO)
 so the same code works across Mac (Metal GPU) and Windows (CUDA, and eventually
 NPU via OpenVINO/Vulkan).
 
-- [ ] F1: Refactor inference to separate prompt/parsing logic from the Codex CLI transport
-- [ ] F2: Add local-model backend that calls an OpenAI-compatible chat completions endpoint
-- [ ] F3: Add --backend flag (codex-cli | local) and --api-url / --model config
-- [ ] F4: Document recommended local setups per platform (Mac/Ollama, Windows/CUDA, Windows/NPU)
-- [ ] F5: Test and validate output parity between Codex CLI and local model backends
+- [x] F1: Refactor inference to separate prompt/parsing logic from the Codex CLI transport
+- [x] F2: Add local-model backend that calls an OpenAI-compatible chat completions endpoint
+- [x] F3: Add --backend flag (codex-cli | local) and --api-url / --model config
+- [x] F4: Document recommended local setups per platform (Mac/Ollama, Windows/CUDA, Windows/NPU)
+- [x] F5: Add unit/integration tests for the Codex CLI and local HTTP backends
 
 ## G — Future Training Work
 

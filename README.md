@@ -79,6 +79,7 @@ implemented yet.
 
 - [User Manual](docs/user-manual.md)
 - [Project Spec](docs/spec.md)
+- [Local Model Setup](docs/local-model-setup.md)
 - [Roadmap](docs/roadmap.md)
 - [Contributing Guide](CONTRIBUTING.md)
 
