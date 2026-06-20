@@ -16,6 +16,7 @@ dependencies = []
 [project.optional-dependencies]
 dev = [
     "pytest>=7.0",
+    "ruff>=0.6",
 ]
 
 [tool.setuptools.packages.find]
@@ -23,3 +24,14 @@ where = ["src"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+[tool.ruff]
+target-version = "py310"
+src = ["src", "scripts", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+# Line length is enforced by the Ruff formatter; E501 only fires on string
+# literals and comments the formatter intentionally leaves intact (e.g. prompt
+# templates and inline-styled HTML), so it is disabled to avoid noise.
+ignore = ["E501"]

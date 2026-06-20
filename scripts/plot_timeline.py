@@ -68,7 +68,10 @@ def _all_suspects(events: list[dict[str, Any]]) -> list[str]:
 
 
 def _chunk_sets(events: list[dict[str, Any]], key: str) -> list[set[str]]:
-    return [{_clean_name(name) for name in (ev.get(key) or []) if _clean_name(name)} for ev in events]
+    return [
+        {_clean_name(name) for name in (ev.get(key) or []) if _clean_name(name)}
+        for ev in events
+    ]
 
 
 def _suspect_sort_key(
@@ -101,7 +104,10 @@ def _ordered_suspects(events: list[dict[str, Any]]) -> list[str]:
             first_seen_at.setdefault(name, idx)
 
     final_active = active_by_chunk[-1] if active_by_chunk else set()
-    return sorted(suspects, key=lambda suspect: _suspect_sort_key(suspect, first_seen_at, final_active))
+    return sorted(
+        suspects,
+        key=lambda suspect: _suspect_sort_key(suspect, first_seen_at, final_active),
+    )
 
 
 def _state_matrix(events: list[dict[str, Any]], suspects: list[str]) -> list[list[str]]:
@@ -125,7 +131,7 @@ def _state_matrix(events: list[dict[str, Any]], suspects: list[str]) -> list[lis
     for suspect in suspects:
         row: list[str] = []
         introduced_at = first_seen_at.get(suspect)
-        for idx, ev in enumerate(events):
+        for idx, _ev in enumerate(events):
             active = active_by_chunk[idx]
             eliminated = eliminated_by_chunk[idx]
             if suspect in active:
@@ -161,9 +167,16 @@ def _find_reveal(events: list[dict[str, Any]]) -> dict[str, Any] | None:
     reveal is found (e.g. multiple suspects remain at the end).
     """
     for ev in reversed(events):
-        active = [_clean_name(n) for n in (ev.get("active_suspects_after_chunk") or []) if _clean_name(n)]
+        active = [
+            _clean_name(n)
+            for n in (ev.get("active_suspects_after_chunk") or [])
+            if _clean_name(n)
+        ]
         if len(active) == 1:
-            return {"chunk_index": int(ev.get("chunk_index", len(events) - 1)), "culprit": active[0]}
+            return {
+                "chunk_index": int(ev.get("chunk_index", len(events) - 1)),
+                "culprit": active[0],
+            }
     return None
 
 
@@ -379,7 +392,7 @@ def _render_heatmap_episode(payload: dict[str, Any], evidence_href: str) -> str:
                 svg_parts.append(
                     f'<line x1="{x + cell_w - 13}" y1="{y + 8}" '
                     f'x2="{x + cell_w - 7}" y2="{y + 8}" stroke="#157f6b" stroke-width="1.5" />'
-        )
+                )
 
     svg_parts.append("</svg>")
     chart_svg = "\n".join(svg_parts)
@@ -392,7 +405,9 @@ def _render_heatmap_episode(payload: dict[str, Any], evidence_href: str) -> str:
         eliminated = ", ".join(ev.get("eliminated") or [])
         evidence = ev.get("evidence") or []
         evidence_txt = "; ".join(
-            f"{e.get('type', '')}:{e.get('character', '')}" for e in evidence if isinstance(e, dict)
+            f"{e.get('type', '')}:{e.get('character', '')}"
+            for e in evidence
+            if isinstance(e, dict)
         )
         error = str(ev.get("error", "")).strip()
         rows.append(
@@ -411,7 +426,7 @@ def _render_heatmap_episode(payload: dict[str, Any], evidence_href: str) -> str:
             '<div class="card reveal-card" style="margin-top:14px">'
             '<div style="display:flex;align-items:center;gap:12px">'
             '<span style="font-size:28px">&#9733;</span>'
-            '<div>'
+            "<div>"
             f'<strong style="font-size:16px;color:#b45309">The culprit: {html.escape(reveal["culprit"])}</strong>'
             f'<p style="margin:4px 0 0;color:var(--muted);font-size:13px">Revealed at chunk {reveal["chunk_index"]}</p>'
             "</div></div></div>"
@@ -502,16 +517,10 @@ def _render_evidence_ladder_episode(payload: dict[str, Any], heatmap_href: str) 
     groups = _evidence_groups(events)
     total_notes = sum(len(group["notes"]) for group in groups)
     implicates = sum(
-        1
-        for group in groups
-        for note in group["notes"]
-        if note["type"] == "implicates"
+        1 for group in groups for note in group["notes"] if note["type"] == "implicates"
     )
     clears = sum(
-        1
-        for group in groups
-        for note in group["notes"]
-        if note["type"] == "clears"
+        1 for group in groups for note in group["notes"] if note["type"] == "clears"
     )
 
     if groups:
@@ -520,14 +529,16 @@ def _render_evidence_ladder_episode(payload: dict[str, Any], heatmap_href: str) 
             chunk_index = group["chunk_index"]
             note_items: list[str] = []
             for note in group["notes"]:
-                chip_class = "chip-implicates" if note["type"] == "implicates" else "chip-clears"
+                chip_class = (
+                    "chip-implicates" if note["type"] == "implicates" else "chip-clears"
+                )
                 safe_character = html.escape(note["character"])
                 safe_note = html.escape(note["note"] or "No note provided.")
                 note_items.append(
                     '<li class="evidence-item">'
                     f'<span class="chip {chip_class}">{html.escape(note["type"])}</span>'
-                    f'<strong>{safe_character}</strong>'
-                    f'<p>{safe_note}</p>'
+                    f"<strong>{safe_character}</strong>"
+                    f"<p>{safe_note}</p>"
                     "</li>"
                 )
             sections.append(
@@ -573,18 +584,22 @@ def _render_evidence_ladder_episode(payload: dict[str, Any], heatmap_href: str) 
     <div class="ladder">
       {ladder_body}
     </div>
-    {"" if reveal is None else (
-        '<div class="card reveal-card">'
-        '<div style="display:flex;align-items:center;gap:14px">'
-        '<span style="font-size:32px">&#9733;</span>'
-        '<div>'
-        '<strong style="font-size:18px;color:#b45309">The culprit: '
-        + html.escape(reveal["culprit"])
-        + '</strong>'
-        '<p style="margin:4px 0 0;color:var(--muted);font-size:13px">Identified at chunk '
-        + str(reveal["chunk_index"])
-        + '</p></div></div></div>'
-    )}
+    {
+        ""
+        if reveal is None
+        else (
+            '<div class="card reveal-card">'
+            '<div style="display:flex;align-items:center;gap:14px">'
+            '<span style="font-size:32px">&#9733;</span>'
+            "<div>"
+            '<strong style="font-size:18px;color:#b45309">The culprit: '
+            + html.escape(reveal["culprit"])
+            + "</strong>"
+            '<p style="margin:4px 0 0;color:var(--muted);font-size:13px">Identified at chunk '
+            + str(reveal["chunk_index"])
+            + "</p></div></div></div>"
+        )
+    }
 """
     extra_styles = """
     .reveal-card {
@@ -774,8 +789,16 @@ def _render_bracket_episode(payload: dict[str, Any], heatmap_href: str) -> str:
         start_chunk = first_seen.get(suspect, 0)
         end_chunk = last_active.get(suspect, start_chunk)
 
-        x_start = left_pad + (start_chunk / max(1, chunks - 1)) * bar_area_w if chunks > 1 else left_pad
-        x_end = left_pad + (end_chunk / max(1, chunks - 1)) * bar_area_w if chunks > 1 else left_pad
+        x_start = (
+            left_pad + (start_chunk / max(1, chunks - 1)) * bar_area_w
+            if chunks > 1
+            else left_pad
+        )
+        x_end = (
+            left_pad + (end_chunk / max(1, chunks - 1)) * bar_area_w
+            if chunks > 1
+            else left_pad
+        )
 
         bar_w = max(8, x_end - x_start + 8)
 
@@ -832,9 +855,21 @@ def _render_bracket_episode(payload: dict[str, Any], heatmap_href: str) -> str:
 
 
 _RACE_COLORS = [
-    "#2f80ed", "#e74c3c", "#27ae60", "#f39c12", "#8e44ad",
-    "#16a085", "#d35400", "#2c3e50", "#c0392b", "#1abc9c",
-    "#e67e22", "#3498db", "#9b59b6", "#2ecc71", "#e84393",
+    "#2f80ed",
+    "#e74c3c",
+    "#27ae60",
+    "#f39c12",
+    "#8e44ad",
+    "#16a085",
+    "#d35400",
+    "#2c3e50",
+    "#c0392b",
+    "#1abc9c",
+    "#e67e22",
+    "#3498db",
+    "#9b59b6",
+    "#2ecc71",
+    "#e84393",
 ]
 
 
@@ -929,7 +964,11 @@ def _render_race_chart_episode(payload: dict[str, Any], heatmap_href: str) -> st
         for i, val in enumerate(series):
             if val is None:
                 continue
-            x = left_pad + (i / max(1, chunks - 1)) * chart_w if chunks > 1 else left_pad
+            x = (
+                left_pad + (i / max(1, chunks - 1)) * chart_w
+                if chunks > 1
+                else left_pad
+            )
             y = top_pad + chart_h - (val / 100 * chart_h)
             points.append(f"{x:.1f},{y:.1f}")
 
@@ -944,7 +983,11 @@ def _render_race_chart_episode(payload: dict[str, Any], heatmap_href: str) -> st
         for i, val in enumerate(series):
             if val is None:
                 continue
-            x = left_pad + (i / max(1, chunks - 1)) * chart_w if chunks > 1 else left_pad
+            x = (
+                left_pad + (i / max(1, chunks - 1)) * chart_w
+                if chunks > 1
+                else left_pad
+            )
             y = top_pad + chart_h - (val / 100 * chart_h)
             svg_parts.append(
                 f'<circle cx="{x:.1f}" cy="{y:.1f}" r="3.5" '
@@ -1024,8 +1067,12 @@ def _render_index(entries: list[dict[str, str]]) -> str:
 
 def main() -> int:
     args = parse_args()
-    input_dir = args.input_dir or (run_stage_path(args.run_root, "timelines") if args.run_root else None)
-    output_dir = args.output_dir or (run_stage_path(args.run_root, "html") if args.run_root else None)
+    input_dir = args.input_dir or (
+        run_stage_path(args.run_root, "timelines") if args.run_root else None
+    )
+    output_dir = args.output_dir or (
+        run_stage_path(args.run_root, "html") if args.run_root else None
+    )
     if input_dir is None or output_dir is None:
         raise ValueError("Provide --run-root or both --input-dir and --output-dir.")
     if not input_dir.exists():
@@ -1081,7 +1128,9 @@ def main() -> int:
             entry["race_href"] = race_name
         index_entries.append(entry)
 
-    (output_dir / "index.html").write_text(_render_index(index_entries), encoding="utf-8")
+    (output_dir / "index.html").write_text(
+        _render_index(index_entries), encoding="utf-8"
+    )
     rendered += 1
 
     print(f"Rendered HTML files: {rendered}")

@@ -1,4 +1,5 @@
 """Tests for murder_she_inferred.backends."""
+
 from __future__ import annotations
 
 import json
@@ -6,9 +7,9 @@ import json
 import pytest
 
 from murder_she_inferred.backends import (
+    _normalize_codex_command,
     codex_cli_backend,
     openai_http_backend,
-    _normalize_codex_command,
 )
 
 
@@ -29,7 +30,9 @@ class TestCodexCliBackend:
         import subprocess as sp
 
         def fake_run(cmd, **kwargs):
-            result = sp.CompletedProcess(args=cmd, returncode=0, stdout='{"introduced": []}', stderr="")
+            result = sp.CompletedProcess(
+                args=cmd, returncode=0, stdout='{"introduced": []}', stderr=""
+            )
             return result
 
         monkeypatch.setattr("murder_she_inferred.backends.subprocess.run", fake_run)
@@ -40,7 +43,9 @@ class TestCodexCliBackend:
         import subprocess as sp
 
         def fake_run(cmd, **kwargs):
-            return sp.CompletedProcess(args=cmd, returncode=1, stdout="", stderr="error msg")
+            return sp.CompletedProcess(
+                args=cmd, returncode=1, stdout="", stderr="error msg"
+            )
 
         monkeypatch.setattr("murder_she_inferred.backends.subprocess.run", fake_run)
         backend = codex_cli_backend("echo")
@@ -51,29 +56,36 @@ class TestCodexCliBackend:
 class TestOpenaiHttpBackend:
     def _mock_urlopen(self, monkeypatch, response_body: dict, status: int = 200):
         """Helper to mock urllib.request.urlopen."""
-        import io
 
         class FakeResponse:
             def __init__(self, data, code):
                 self._data = json.dumps(data).encode("utf-8")
                 self.status = code
+
             def read(self):
                 return self._data
+
             def __enter__(self):
                 return self
+
             def __exit__(self, *args):
                 pass
 
         def fake_urlopen(req, timeout=None):
             return FakeResponse(response_body, status)
 
-        monkeypatch.setattr("murder_she_inferred.backends.urllib.request.urlopen", fake_urlopen)
+        monkeypatch.setattr(
+            "murder_she_inferred.backends.urllib.request.urlopen", fake_urlopen
+        )
 
     def test_parses_valid_response(self, monkeypatch):
-        self._mock_urlopen(monkeypatch, {
-            "choices": [{"message": {"content": '{"introduced": ["Alice"]}'}}]
-        })
-        backend = openai_http_backend(api_url="http://localhost:11434/v1/chat/completions", model="test")
+        self._mock_urlopen(
+            monkeypatch,
+            {"choices": [{"message": {"content": '{"introduced": ["Alice"]}'}}]},
+        )
+        backend = openai_http_backend(
+            api_url="http://localhost:11434/v1/chat/completions", model="test"
+        )
         result = backend("test prompt")
         assert '"Alice"' in result
 
@@ -88,11 +100,16 @@ class TestOpenaiHttpBackend:
 
         def fake_urlopen(req, timeout=None):
             raise urllib.error.HTTPError(
-                url="http://localhost", code=500, msg="Server Error",
-                hdrs=None, fp=__import__("io").BytesIO(b"internal error")
+                url="http://localhost",
+                code=500,
+                msg="Server Error",
+                hdrs=None,
+                fp=__import__("io").BytesIO(b"internal error"),
             )
 
-        monkeypatch.setattr("murder_she_inferred.backends.urllib.request.urlopen", fake_urlopen)
+        monkeypatch.setattr(
+            "murder_she_inferred.backends.urllib.request.urlopen", fake_urlopen
+        )
         backend = openai_http_backend()
         with pytest.raises(RuntimeError, match="HTTP 500"):
             backend("test prompt")
@@ -103,7 +120,9 @@ class TestOpenaiHttpBackend:
         def fake_urlopen(req, timeout=None):
             raise urllib.error.URLError("Connection refused")
 
-        monkeypatch.setattr("murder_she_inferred.backends.urllib.request.urlopen", fake_urlopen)
+        monkeypatch.setattr(
+            "murder_she_inferred.backends.urllib.request.urlopen", fake_urlopen
+        )
         backend = openai_http_backend()
         with pytest.raises(RuntimeError, match="Could not connect"):
             backend("test prompt")
@@ -114,11 +133,13 @@ class TestOpenaiHttpBackend:
 
         class FakeResponse:
             def read(self):
-                return json.dumps({
-                    "choices": [{"message": {"content": "ok"}}]
-                }).encode("utf-8")
+                return json.dumps({"choices": [{"message": {"content": "ok"}}]}).encode(
+                    "utf-8"
+                )
+
             def __enter__(self):
                 return self
+
             def __exit__(self, *args):
                 pass
 
@@ -126,11 +147,16 @@ class TestOpenaiHttpBackend:
             captured_requests.append(json.loads(req.data.decode("utf-8")))
             return FakeResponse()
 
-        monkeypatch.setattr("murder_she_inferred.backends.urllib.request.urlopen", fake_urlopen)
+        monkeypatch.setattr(
+            "murder_she_inferred.backends.urllib.request.urlopen", fake_urlopen
+        )
         backend = openai_http_backend(model="test-model")
 
         from murder_she_inferred.inference import SYSTEM_PROMPT
-        full_prompt = SYSTEM_PROMPT + "\n\nPrior state:\n{}\n\nCurrent chunk text:\ntest"
+
+        full_prompt = (
+            SYSTEM_PROMPT + "\n\nPrior state:\n{}\n\nCurrent chunk text:\ntest"
+        )
         backend(full_prompt)
 
         assert len(captured_requests) == 1
@@ -148,19 +174,32 @@ class TestOpenaiHttpBackend:
         call_count = [0]
 
         canned_responses = [
-            {"introduced": ["Alice"], "eliminated": [], "evidence": [], "suspicion_scores": {"Alice": 100}},
-            {"introduced": [], "eliminated": ["Alice"], "evidence": [{"type": "clears", "character": "Alice", "note": "alibi"}], "suspicion_scores": {}},
+            {
+                "introduced": ["Alice"],
+                "eliminated": [],
+                "evidence": [],
+                "suspicion_scores": {"Alice": 100},
+            },
+            {
+                "introduced": [],
+                "eliminated": ["Alice"],
+                "evidence": [{"type": "clears", "character": "Alice", "note": "alibi"}],
+                "suspicion_scores": {},
+            },
         ]
 
         class FakeResponse:
             def __init__(self, content):
-                self._data = json.dumps({
-                    "choices": [{"message": {"content": json.dumps(content)}}]
-                }).encode("utf-8")
+                self._data = json.dumps(
+                    {"choices": [{"message": {"content": json.dumps(content)}}]}
+                ).encode("utf-8")
+
             def read(self):
                 return self._data
+
             def __enter__(self):
                 return self
+
             def __exit__(self, *args):
                 pass
 
@@ -170,9 +209,12 @@ class TestOpenaiHttpBackend:
             call_count[0] += 1
             return FakeResponse(canned_responses[idx])
 
-        monkeypatch.setattr("murder_she_inferred.backends.urllib.request.urlopen", fake_urlopen)
+        monkeypatch.setattr(
+            "murder_she_inferred.backends.urllib.request.urlopen", fake_urlopen
+        )
 
         from murder_she_inferred.backends import openai_http_backend
+
         backend = openai_http_backend(model="test")
 
         payload = {

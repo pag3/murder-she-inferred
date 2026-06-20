@@ -85,7 +85,11 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 
 
 def _run_step(script_name: str, args: list[str]) -> None:
-    command = [sys.executable, str(Path(__file__).resolve().parents[2] / "scripts" / script_name), *args]
+    command = [
+        sys.executable,
+        str(Path(__file__).resolve().parents[2] / "scripts" / script_name),
+        *args,
+    ]
     completed = subprocess.run(command, check=False)
     if completed.returncode != 0:
         raise SystemExit(completed.returncode)

@@ -10,37 +10,60 @@ import subprocess
 import sys
 from pathlib import Path
 
-from murder_she_inferred.ingest import load_transcript, split_into_chunks, strip_boilerplate
-
+from murder_she_inferred.ingest import (
+    load_transcript,
+    split_into_chunks,
+    strip_boilerplate,
+)
 
 TRANSCRIPT_EXPECTATIONS = {
     "T01 - Harbor Ledger.txt": {
         "must_keep": ["Margo Dane", "Evan Pike", "Ruth Fallon"],
-        "must_strip": ["Transcript Archive", "Powered by Example Forum Software", "Posted:"],
+        "must_strip": [
+            "Transcript Archive",
+            "Powered by Example Forum Software",
+            "Posted:",
+        ],
         "chunk_size": 500,
         "min_chunks": 1,
     },
     "T02 - Gallery Opening.txt": {
         "must_keep": ["Celia March", "Grant Heller", "Nina Vale"],
-        "must_strip": ["Transcript Archive", "Powered by Example Forum Software", "Posted:"],
+        "must_strip": [
+            "Transcript Archive",
+            "Powered by Example Forum Software",
+            "Posted:",
+        ],
         "chunk_size": 500,
         "min_chunks": 2,
     },
     "T03 - Founders Weekend.txt": {
         "must_keep": ["Felix Dunn", "Vivian Shore", "Owen Pritchard"],
-        "must_strip": ["Transcript Archive", "Powered by Example Forum Software", "Posted:"],
+        "must_strip": [
+            "Transcript Archive",
+            "Powered by Example Forum Software",
+            "Posted:",
+        ],
         "chunk_size": 500,
         "min_chunks": 10,
     },
     "T04 - Bell Tower Static.txt": {
         "must_keep": ["Pastor Len Mercer", "Doria Pike", "Theo Marsh"],
-        "must_strip": ["Transcript Archive", "Powered by Example Forum Software", "Posted:"],
+        "must_strip": [
+            "Transcript Archive",
+            "Powered by Example Forum Software",
+            "Posted:",
+        ],
         "chunk_size": 450,
         "min_chunks": 8,
     },
     "T05 - Last Ferry Interview.txt": {
         "must_keep": ["Isla Voss", "Marcus Reed", "Paula Kent"],
-        "must_strip": ["Transcript Archive", "Powered by Example Forum Software", "Posted:"],
+        "must_strip": [
+            "Transcript Archive",
+            "Powered by Example Forum Software",
+            "Posted:",
+        ],
         "chunk_size": 450,
         "min_chunks": 9,
     },
@@ -81,7 +104,9 @@ def test_test_transcripts_can_be_loaded_cleaned_and_chunked(
         assert len(chunks_first) >= expected["min_chunks"]
         assert [chunk.index for chunk in chunks_first] == list(range(len(chunks_first)))
         assert all(chunk.text.strip() for chunk in chunks_first)
-        assert [chunk.text for chunk in chunks_first] == [chunk.text for chunk in chunks_second]
+        assert [chunk.text for chunk in chunks_first] == [
+            chunk.text for chunk in chunks_second
+        ]
 
         reassembled = " ".join(chunk.text for chunk in chunks_first)
         for fragment in expected["must_keep"]:
@@ -226,9 +251,9 @@ def test_pipeline_scripts_run_against_committed_test_transcripts(
         (
             "import json\n"
             "print(json.dumps({"
-            "\"introduced\": [], "
-            "\"eliminated\": [], "
-            "\"evidence\": []"
+            '"introduced": [], '
+            '"eliminated": [], '
+            '"evidence": []'
             "}))\n"
         ),
         encoding="utf-8",
@@ -308,7 +333,9 @@ def test_pipeline_scripts_run_against_committed_test_transcripts(
     html_paths = sorted(html_dir.glob("*.html"))
     assert len(chunk_paths) == 5
     assert len(timeline_paths) == 5
-    assert len(html_paths) == 21  # 5 heatmaps + 5 evidence + 5 brackets + 5 race + 1 index
+    assert (
+        len(html_paths) == 21
+    )  # 5 heatmaps + 5 evidence + 5 brackets + 5 race + 1 index
     assert (html_dir / "index.html").exists()
     assert len(list(html_dir.glob("*.timeline.html"))) == 5
     assert len(list(html_dir.glob("*.evidence.html"))) == 5
@@ -335,9 +362,9 @@ def test_run_full_pipeline_script_runs_all_stages(
         (
             "import json\n"
             "print(json.dumps({"
-            "\"introduced\": [], "
-            "\"eliminated\": [], "
-            "\"evidence\": []"
+            '"introduced": [], '
+            '"eliminated": [], '
+            '"evidence": []'
             "}))\n"
         ),
         encoding="utf-8",
@@ -384,9 +411,9 @@ def test_package_cli_runs_full_pipeline_without_explicit_subcommand(
         (
             "import json\n"
             "print(json.dumps({"
-            "\"introduced\": [], "
-            "\"eliminated\": [], "
-            "\"evidence\": []"
+            '"introduced": [], '
+            '"eliminated": [], '
+            '"evidence": []'
             "}))\n"
         ),
         encoding="utf-8",

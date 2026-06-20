@@ -3,10 +3,9 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Callable
 
 import pytest
-
-from typing import Callable
 
 from murder_she_inferred.inference import (
     SYSTEM_PROMPT,
@@ -191,7 +190,13 @@ class TestBuildTimeline:
             {
                 "introduced": ["Alice", "Bob"],
                 "eliminated": [],
-                "evidence": [{"type": "implicates", "character": "Alice", "note": "seen near crime"}],
+                "evidence": [
+                    {
+                        "type": "implicates",
+                        "character": "Alice",
+                        "note": "seen near crime",
+                    }
+                ],
                 "suspicion_scores": {"Alice": 60, "Bob": 40},
             },
             {
@@ -203,7 +208,9 @@ class TestBuildTimeline:
             {
                 "introduced": [],
                 "eliminated": ["Bob"],
-                "evidence": [{"type": "clears", "character": "Bob", "note": "has alibi"}],
+                "evidence": [
+                    {"type": "clears", "character": "Bob", "note": "has alibi"}
+                ],
                 "suspicion_scores": {"Alice": 65, "Charlie": 35},
             },
         ]
@@ -249,7 +256,12 @@ class TestBuildTimeline:
     def test_max_chunks_limits_processing(self):
         """max_chunks caps how many chunks are processed."""
         responses = [
-            {"introduced": ["Alice"], "eliminated": [], "evidence": [], "suspicion_scores": {"Alice": 100}},
+            {
+                "introduced": ["Alice"],
+                "eliminated": [],
+                "evidence": [],
+                "suspicion_scores": {"Alice": 100},
+            },
         ]
         payload = self._make_chunks_payload(5)
         backend = self._make_mock_backend(responses)
@@ -268,6 +280,7 @@ class TestBuildTimeline:
 
     def test_backend_failure_uses_empty_result(self):
         """When backend raises on all retries, event has empty result."""
+
         def failing_backend(prompt: str) -> str:
             raise RuntimeError("Connection refused")
 
@@ -291,9 +304,24 @@ class TestBuildTimeline:
     def test_suspect_reactivation(self):
         """A previously eliminated suspect can be reintroduced."""
         responses = [
-            {"introduced": ["Alice"], "eliminated": [], "evidence": [], "suspicion_scores": {"Alice": 100}},
-            {"introduced": [], "eliminated": ["Alice"], "evidence": [], "suspicion_scores": {}},
-            {"introduced": ["Alice"], "eliminated": [], "evidence": [], "suspicion_scores": {"Alice": 100}},
+            {
+                "introduced": ["Alice"],
+                "eliminated": [],
+                "evidence": [],
+                "suspicion_scores": {"Alice": 100},
+            },
+            {
+                "introduced": [],
+                "eliminated": ["Alice"],
+                "evidence": [],
+                "suspicion_scores": {},
+            },
+            {
+                "introduced": ["Alice"],
+                "eliminated": [],
+                "evidence": [],
+                "suspicion_scores": {"Alice": 100},
+            },
         ]
         payload = self._make_chunks_payload(3)
         backend = self._make_mock_backend(responses)
@@ -313,7 +341,12 @@ class TestBuildTimeline:
     def test_event_structure(self):
         """Each event has all required keys."""
         responses = [
-            {"introduced": ["Alice"], "eliminated": [], "evidence": [], "suspicion_scores": {"Alice": 100}},
+            {
+                "introduced": ["Alice"],
+                "eliminated": [],
+                "evidence": [],
+                "suspicion_scores": {"Alice": 100},
+            },
         ]
         payload = self._make_chunks_payload(1)
         backend = self._make_mock_backend(responses)
@@ -329,8 +362,13 @@ class TestBuildTimeline:
 
         event = result["events"][0]
         required_keys = {
-            "chunk_index", "introduced", "eliminated", "evidence",
-            "suspicion_scores", "active_suspects_after_chunk",
-            "eliminated_suspects_after_chunk", "error",
+            "chunk_index",
+            "introduced",
+            "eliminated",
+            "evidence",
+            "suspicion_scores",
+            "active_suspects_after_chunk",
+            "eliminated_suspects_after_chunk",
+            "error",
         }
         assert required_keys.issubset(event.keys())

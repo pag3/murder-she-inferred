@@ -6,7 +6,6 @@ from __future__ import annotations
 import argparse
 import json
 from pathlib import Path
-from typing import Any
 
 from murder_she_inferred.backends import codex_cli_backend, openai_http_backend
 from murder_she_inferred.inference import build_timeline
@@ -52,22 +51,54 @@ def parse_args() -> argparse.Namespace:
     )
 
     # Shared options (same as existing script)
-    parser.add_argument("--run-root", type=Path, default=None,
-        help="Optional numbered run root. Uses 02-chunks and 03-timelines under this root.")
-    parser.add_argument("--input-dir", type=Path, default=None,
-        help=f"Directory containing *.chunks.json files (default: {default_input_dir})")
-    parser.add_argument("--output-dir", type=Path, default=None,
-        help=f"Directory to write *.timeline.json files (default: {default_output_dir})")
-    parser.add_argument("--file", type=Path, default=None,
-        help="Optional single *.chunks.json file to process.")
-    parser.add_argument("--max-chunks", type=int, default=None,
-        help="Optional cap on chunks processed per episode.")
-    parser.add_argument("--context-window", type=int, default=5,
-        help="Number of recent chunks as transcript context (default: 5). Use 0 for full cumulative.")
-    parser.add_argument("--retries", type=int, default=2,
-        help="Retries per chunk on invalid output (default: 2).")
-    parser.add_argument("--sleep-seconds", type=float, default=0.0,
-        help="Optional delay between chunk calls.")
+    parser.add_argument(
+        "--run-root",
+        type=Path,
+        default=None,
+        help="Optional numbered run root. Uses 02-chunks and 03-timelines under this root.",
+    )
+    parser.add_argument(
+        "--input-dir",
+        type=Path,
+        default=None,
+        help=f"Directory containing *.chunks.json files (default: {default_input_dir})",
+    )
+    parser.add_argument(
+        "--output-dir",
+        type=Path,
+        default=None,
+        help=f"Directory to write *.timeline.json files (default: {default_output_dir})",
+    )
+    parser.add_argument(
+        "--file",
+        type=Path,
+        default=None,
+        help="Optional single *.chunks.json file to process.",
+    )
+    parser.add_argument(
+        "--max-chunks",
+        type=int,
+        default=None,
+        help="Optional cap on chunks processed per episode.",
+    )
+    parser.add_argument(
+        "--context-window",
+        type=int,
+        default=5,
+        help="Number of recent chunks as transcript context (default: 5). Use 0 for full cumulative.",
+    )
+    parser.add_argument(
+        "--retries",
+        type=int,
+        default=2,
+        help="Retries per chunk on invalid output (default: 2).",
+    )
+    parser.add_argument(
+        "--sleep-seconds",
+        type=float,
+        default=0.0,
+        help="Optional delay between chunk calls.",
+    )
 
     return parser.parse_args()
 

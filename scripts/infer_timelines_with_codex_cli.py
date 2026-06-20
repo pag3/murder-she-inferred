@@ -49,7 +49,7 @@ def parse_args() -> argparse.Namespace:
         default="codex exec -",
         help=(
             "Shell command used to call Codex CLI. Prompt is sent on stdin. "
-            "Example: \"codex exec -\""
+            'Example: "codex exec -"'
         ),
     )
     parser.add_argument(

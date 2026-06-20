@@ -3,15 +3,16 @@
 Each backend factory returns a callable with signature (prompt: str) -> str
 that sends a prompt to an LLM and returns the raw text response.
 """
+
 from __future__ import annotations
 
 import json
 import shlex
 import subprocess
-import urllib.request
 import urllib.error
+import urllib.request
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable
 
 
 def codex_cli_backend(command: str = "codex exec -") -> Callable[[str], str]:
@@ -55,6 +56,7 @@ def openai_http_backend(
         model: Model name to request.
         timeout: Request timeout in seconds.
     """
+
     def _call(prompt: str) -> str:
         # Import SYSTEM_PROMPT here to split system vs user message
         from murder_she_inferred.inference import SYSTEM_PROMPT
@@ -63,16 +65,18 @@ def openai_http_backend(
         # then has the rest as user content. Split them.
         user_content = prompt
         if prompt.startswith(SYSTEM_PROMPT):
-            user_content = prompt[len(SYSTEM_PROMPT):].lstrip("\n")
+            user_content = prompt[len(SYSTEM_PROMPT) :].lstrip("\n")
 
-        request_body = json.dumps({
-            "model": model,
-            "messages": [
-                {"role": "system", "content": SYSTEM_PROMPT},
-                {"role": "user", "content": user_content},
-            ],
-            "temperature": 0.2,
-        }).encode("utf-8")
+        request_body = json.dumps(
+            {
+                "model": model,
+                "messages": [
+                    {"role": "system", "content": SYSTEM_PROMPT},
+                    {"role": "user", "content": user_content},
+                ],
+                "temperature": 0.2,
+            }
+        ).encode("utf-8")
 
         req = urllib.request.Request(
             api_url,
@@ -89,9 +93,7 @@ def openai_http_backend(
                 f"HTTP {exc.code} from {api_url}: {exc.read().decode('utf-8', errors='replace')}"
             ) from exc
         except urllib.error.URLError as exc:
-            raise RuntimeError(
-                f"Could not connect to {api_url}: {exc.reason}"
-            ) from exc
+            raise RuntimeError(f"Could not connect to {api_url}: {exc.reason}") from exc
 
         try:
             return data["choices"][0]["message"]["content"]

@@ -7,7 +7,9 @@ import sys
 from pathlib import Path
 
 
-def test_plot_timeline_renders_state_heatmap_and_evidence_markers(tmp_path: Path) -> None:
+def test_plot_timeline_renders_state_heatmap_and_evidence_markers(
+    tmp_path: Path,
+) -> None:
     repo_root = Path(__file__).resolve().parents[1]
     input_dir = tmp_path / "03-timelines"
     output_dir = tmp_path / "05-html"
@@ -152,7 +154,9 @@ def test_plot_timeline_renders_empty_evidence_ladder(tmp_path: Path) -> None:
             },
         ],
     }
-    (input_dir / "empty.timeline.json").write_text(json.dumps(payload), encoding="utf-8")
+    (input_dir / "empty.timeline.json").write_text(
+        json.dumps(payload), encoding="utf-8"
+    )
 
     env = {**os.environ, "PYTHONPATH": "src"}
     result = subprocess.run(

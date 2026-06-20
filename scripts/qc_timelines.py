@@ -117,7 +117,9 @@ def qc_file(path: Path, max_error_rate: float) -> dict[str, Any]:
 
 def main() -> int:
     args = parse_args()
-    input_dir = args.input_dir or (run_stage_path(args.run_root, "timelines") if args.run_root else None)
+    input_dir = args.input_dir or (
+        run_stage_path(args.run_root, "timelines") if args.run_root else None
+    )
     if input_dir is None:
         raise ValueError("Provide --input-dir or --run-root.")
     if not input_dir.exists():
@@ -155,7 +157,9 @@ def main() -> int:
                 f"| empty_rate={row['empty_rate']:.2f}"
             )
 
-    report_path = args.report_path or (run_stage_path(args.run_root, "qc") / "report.json" if args.run_root else None)
+    report_path = args.report_path or (
+        run_stage_path(args.run_root, "qc") / "report.json" if args.run_root else None
+    )
     if report_path:
         report_path.parent.mkdir(parents=True, exist_ok=True)
         report_path.write_text(
