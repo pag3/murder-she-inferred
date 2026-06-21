@@ -4,9 +4,15 @@ from __future__ import annotations
 
 import json
 import time
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
-from murder_she_inferred.models import Chunk, EpisodeMetadata, EpisodeTimeline, SuspectState
+from murder_she_inferred.models import (
+    Chunk,
+    EpisodeMetadata,
+    EpisodeTimeline,
+    SuspectState,
+)
 from murder_she_inferred.tracker import SuspectTracker
 
 SYSTEM_PROMPT = """You are extracting suspect timeline updates from a mystery transcript.
@@ -164,7 +170,9 @@ def build_timeline(
     if max_chunks is not None:
         chunks = chunks[:max_chunks]
 
-    timeline = EpisodeTimeline(metadata=EpisodeMetadata(title=episode_id), chunks=chunks)
+    timeline = EpisodeTimeline(
+        metadata=EpisodeMetadata(title=episode_id), chunks=chunks
+    )
     tracker = SuspectTracker(timeline)
 
     chunk_events: list[dict[str, Any]] = []
@@ -204,7 +212,12 @@ def build_timeline(
                 result = None
 
         if result is None:
-            result = {"introduced": [], "eliminated": [], "evidence": [], "suspicion_scores": {}}
+            result = {
+                "introduced": [],
+                "eliminated": [],
+                "evidence": [],
+                "suspicion_scores": {},
+            }
 
         for name in result["introduced"]:
             tracker.introduce_suspect(name, chunk.index)
@@ -236,10 +249,18 @@ def build_timeline(
                 "evidence": result["evidence"],
                 "suspicion_scores": result.get("suspicion_scores", {}),
                 "active_suspects_after_chunk": sorted(
-                    [name for name, st in state_after.items() if st == SuspectState.ACTIVE]
+                    [
+                        name
+                        for name, st in state_after.items()
+                        if st == SuspectState.ACTIVE
+                    ]
                 ),
                 "eliminated_suspects_after_chunk": sorted(
-                    [name for name, st in state_after.items() if st == SuspectState.ELIMINATED]
+                    [
+                        name
+                        for name, st in state_after.items()
+                        if st == SuspectState.ELIMINATED
+                    ]
                 ),
                 "error": last_error if last_error and not any(result.values()) else "",
             }

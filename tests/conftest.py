@@ -1,8 +1,8 @@
 """Shared test helpers and sample transcripts."""
 
-import pytest
 from pathlib import Path
 
+import pytest
 
 SAMPLE_TRANSCRIPT = """\
 FADE IN:

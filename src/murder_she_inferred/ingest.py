@@ -13,7 +13,6 @@ from __future__ import annotations
 
 import re
 from pathlib import Path
-from typing import Optional
 
 from murder_she_inferred.models import Chunk, EpisodeMetadata, EpisodeTimeline
 
@@ -116,6 +115,7 @@ def split_into_chunks(
 # Splitting strategies
 # ---------------------------------------------------------------------------
 
+
 def _split_paragraphs(text: str) -> list[str]:
     """Split text into blocks separated by one or more blank lines."""
     blocks = re.split(r"\n\s*\n", text)
@@ -185,7 +185,6 @@ def _split_fixed(text: str, target_size: int) -> list[str]:
 
         # Look for a sentence boundary near the target size.
         # Search in a window: [target * 0.7, target * 1.3]
-        window_lo = start + int(target_size * 0.7)
         window_hi = min(start + int(target_size * 1.3), len(text))
         candidate = text[start:window_hi]
 
@@ -250,9 +249,10 @@ def _is_trivial_preamble(text: str) -> bool:
 # High-level ingestion pipeline
 # ---------------------------------------------------------------------------
 
+
 def ingest_episode(
     transcript_path: str | Path,
-    metadata: Optional[EpisodeMetadata] = None,
+    metadata: EpisodeMetadata | None = None,
     chunk_mode: str = "scene",
     *,
     strip_boilerplate_text: bool = False,

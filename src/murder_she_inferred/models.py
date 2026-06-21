@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Optional
 
 
 class SuspectState(Enum):
@@ -26,9 +25,9 @@ class EpisodeMetadata:
     """Metadata for a Murder, She Wrote episode."""
 
     title: str
-    season: Optional[int] = None
-    episode: Optional[int] = None
-    year: Optional[int] = None
+    season: int | None = None
+    episode: int | None = None
+    year: int | None = None
 
 
 @dataclass
@@ -49,7 +48,9 @@ class EvidenceNote:
     note: str = ""
 
     def __str__(self) -> str:
-        verb = "implicates" if self.evidence_type == EvidenceType.IMPLICATES else "clears"
+        verb = (
+            "implicates" if self.evidence_type == EvidenceType.IMPLICATES else "clears"
+        )
         base = f"[Chunk {self.chunk_index}] {verb} {self.character}"
         if self.note:
             base += f" — {self.note}"
@@ -63,7 +64,7 @@ class SuspectRecord:
     name: str
     introduced_at: int  # chunk index where first identified as suspect
     state: SuspectState = SuspectState.ACTIVE
-    eliminated_at: Optional[int] = None  # chunk index where eliminated
+    eliminated_at: int | None = None  # chunk index where eliminated
     transitions: list[tuple[int, SuspectState]] = field(default_factory=list)
 
     def __post_init__(self) -> None:

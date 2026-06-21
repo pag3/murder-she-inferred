@@ -110,9 +110,7 @@ class SuspectTracker:
             lines.append(f"  - {s.name} (since chunk {s.introduced_at})")
         lines.append(f"Eliminated suspects: {len(self.eliminated_suspects)}")
         for s in self.eliminated_suspects:
-            lines.append(
-                f"  - {s.name} (chunks {s.introduced_at}–{s.eliminated_at})"
-            )
+            lines.append(f"  - {s.name} (chunks {s.introduced_at}–{s.eliminated_at})")
         if self.timeline.evidence:
             lines.append(f"Evidence notes: {len(self.timeline.evidence)}")
             for e in self.timeline.evidence:

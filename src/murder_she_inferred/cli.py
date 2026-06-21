@@ -7,7 +7,6 @@ import subprocess
 import sys
 from pathlib import Path
 
-
 SCRIPT_COMMANDS = {
     "run": "run_full_pipeline.py",
     "chunks": "build_episode_timeline_chunks.py",

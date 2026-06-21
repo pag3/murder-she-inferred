@@ -38,6 +38,21 @@ python3 -m pytest
 The repository also includes a minimal GitHub Actions workflow that runs the
 test suite on pushes to `main` and on pull requests targeting `main`.
 
+## Linting and Formatting
+
+This project uses [Ruff](https://docs.astral.sh/ruff/) for linting and
+formatting. It is installed with the development dependencies above. Before
+opening a PR, check and format your changes:
+
+```bash
+ruff check .
+ruff format .
+```
+
+The same checks run in CI (`ruff check .` and `ruff format --check .`), so
+keeping them clean locally keeps the pipeline green. Ruff is configured in
+`pyproject.toml`.
+
 Script-level tests should run the actual CLI tools where practical. The shared
 test data lives under `test-run/01-transcripts/`, and those tests should point
 the real package CLI or stage scripts at that directory with CLI path arguments
@@ -58,6 +73,7 @@ instead of relying on separate test-only codepaths.
 - Update [docs/roadmap.md](docs/roadmap.md) when a roadmap item is completed,
   reprioritized, or meaningfully redefined.
 - Keep `python3 -m pytest` passing locally before opening a PR.
+- Keep `ruff check .` and `ruff format --check .` clean before opening a PR.
 - Keep script interfaces path-driven so tests can point them at
   `test-run/` and local production/manual use can point them at
   private transcript directories with the same CLI flags.

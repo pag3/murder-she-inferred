@@ -1,13 +1,12 @@
 """Tests for transcript ingestion (FR-1)."""
 
 import pytest
-from pathlib import Path
 
 from murder_she_inferred.ingest import (
+    ingest_episode,
     load_transcript,
     split_into_chunks,
     strip_boilerplate,
-    ingest_episode,
 )
 from murder_she_inferred.models import EpisodeMetadata
 
@@ -135,13 +134,7 @@ class TestSplitIntoChunks:
         assert "INT. JESSICA'S HOUSE" in chunks[1].text
 
     def test_trivial_preamble_dropped(self):
-        text = (
-            "FADE IN:\n"
-            "\n"
-            "INT. JESSICA'S HOUSE - DAY\n"
-            "\n"
-            "Some dialogue here.\n"
-        )
+        text = "FADE IN:\n\nINT. JESSICA'S HOUSE - DAY\n\nSome dialogue here.\n"
         chunks = split_into_chunks(text, mode="scene")
         # "FADE IN:" is trivial and should be dropped
         assert len(chunks) == 1
@@ -161,7 +154,7 @@ class TestFixedModeChunking:
 
     def test_splits_long_text(self):
         # Build a long text that needs splitting
-        sentences = ["This is sentence number %d." % i for i in range(100)]
+        sentences = [f"This is sentence number {i}." for i in range(100)]
         text = " ".join(sentences)
         chunks = split_into_chunks(text, mode="fixed", chunk_size=200)
         assert len(chunks) > 1
